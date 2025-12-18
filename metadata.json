@@ -1,0 +1,7 @@
+{
+  "name": "SiGEMed (Sistema de Gestión de Equipo Medico) - 3",
+  "description": "SiGEMed: Una aplicación integral para la gestión del inventario, mantenimiento y ciclo de vida de equipos médicos en un entorno hospitalario, con control de acceso basado en roles y reportes analíticos.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

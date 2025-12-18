@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SiGEMed - Sistema de Gestión de Equipo Medico</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class', // Habilitar modo oscuro basado en clases
+      theme: {
+        extend: {
+          colors: {
+            'brand-blue': {
+              light: '#E0F2FE',
+              DEFAULT: '#0EA5E9',
+              dark: '#0369A1',
+              darker: '#082f49',
+            },
+            'brand-gray': {
+              light: '#F7FAFC',
+              DEFAULT: '#EDF2F7',
+              dark: '#A0AEC0',
+            },
+            'status-active': '#48BB78',
+            'status-maintenance': '#F6E05E',
+            'status-oos': '#F56565',
+            'status-loan': '#4299E1',
+            'status-decommissioned': '#A0AEC0',
+          },
+          animation: {
+            'fade-in-out': 'fadeInOut 4s ease-in-out forwards',
+          },
+          keyframes: {
+            fadeInOut: {
+              '0%': { opacity: 0, transform: 'translateY(-20px)' },
+              '15%': { opacity: 1, transform: 'translateY(0)' },
+              '85%': { opacity: 1, transform: 'translateY(0)' },
+              '100%': { opacity: 0, transform: 'translateY(-20px)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "recharts": "https://aistudiocdn.com/recharts@^3.2.1",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.4",
+    "vite": "https://aistudiocdn.com/vite@^7.1.9",
+    "path": "https://aistudiocdn.com/path@^0.12.7",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.0.4",
+    "process": "https://aistudiocdn.com/process@^0.11.10",
+    "cors": "https://aistudiocdn.com/cors@^2.8.5",
+    "dotenv": "https://aistudiocdn.com/dotenv@^17.2.3",
+    "express": "https://aistudiocdn.com/express@^5.1.0",
+    "bcrypt": "https://aistudiocdn.com/bcrypt@^6.0.0",
+    "mysql2/": "https://aistudiocdn.com/mysql2@^3.15.3/",
+    "url": "https://aistudiocdn.com/url@^0.11.4"
+  }
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-brand-gray-light dark:bg-gray-900">
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
