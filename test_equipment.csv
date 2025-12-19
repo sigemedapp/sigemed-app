@@ -1,0 +1,6 @@
+name,brand,model,serialNumber,location,status,lastMaintenanceDate,nextMaintenanceDate
+Monitor Cardiaco,Philips,IntelliVue MP5,SN001234,Urgencias,Operativo,2024-11-15,2025-02-15
+Ventilador Mecánico,Medtronic,PB840,SN005678,UCI,Operativo,2024-10-20,2025-01-20
+Desfibrilador,ZOLL,M Series,SN009012,Quirófano 1,En Mantenimiento,2024-09-30,2024-12-30
+Bomba de Infusión,Baxter,Colleague 3,SN003456,Piso 2,Operativo,2024-12-01,2025-03-01
+Oxímetro de Pulso,Masimo,Radical-7,SN007890,Urgencias,Operativo,2024-11-10,2025-02-10
