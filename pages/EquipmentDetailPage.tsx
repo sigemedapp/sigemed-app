@@ -344,10 +344,7 @@ const EquipmentDetailPage: React.FC = () => {
                 Volver
             </button>
 
-            {/* DEBUG BANNER - TO BE REMOVED */}
-            <div className="bg-yellow-100 border-l-4 border-yellow-500 p-2 mb-4 text-xs font-mono">
-                DEBUG INFO: User Role = "{user?.role}" | ID = "{user?.id}" | Check = {String([Role.SUPER_ADMIN, Role.SYSTEM_ADMIN].includes(user?.role as Role))}
-            </div>
+
 
             {activeWorkOrder && (
                 <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-800 p-4 rounded-lg mb-6 shadow-md" role="alert">
@@ -378,8 +375,9 @@ const EquipmentDetailPage: React.FC = () => {
                                 <h1 className="block mt-1 text-3xl leading-tight font-bold text-black flex items-center gap-2">
                                     {equipment.name}
                                     {user && [Role.SUPER_ADMIN, Role.SYSTEM_ADMIN].includes(user.role) && (
-                                        <button onClick={() => setIsEditModalOpen(true)} className="text-gray-400 hover:text-blue-500 transition-colors" title="Editar Equipo">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                        <button onClick={() => setIsEditModalOpen(true)} className="ml-3 text-sm flex items-center gap-1 text-gray-500 hover:text-blue-600 transition-colors bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-full" title="Editar Equipo">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                            Editar
                                         </button>
                                     )}
                                 </h1>
