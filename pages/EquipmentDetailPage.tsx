@@ -344,6 +344,11 @@ const EquipmentDetailPage: React.FC = () => {
                 Volver
             </button>
 
+            {/* DEBUG BANNER - TO BE REMOVED */}
+            <div className="bg-yellow-100 border-l-4 border-yellow-500 p-2 mb-4 text-xs font-mono">
+                DEBUG INFO: User Role = "{user?.role}" | ID = "{user?.id}" | Check = {String([Role.SUPER_ADMIN, Role.SYSTEM_ADMIN].includes(user?.role as Role))}
+            </div>
+
             {activeWorkOrder && (
                 <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-800 p-4 rounded-lg mb-6 shadow-md" role="alert">
                     <div className="flex items-center">
