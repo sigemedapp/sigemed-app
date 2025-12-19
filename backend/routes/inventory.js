@@ -59,11 +59,11 @@ router.post('/bulk-upload', async (req, res) => {
             `;
 
             await connection.execute(query, [
-                item.name,
-                item.brand,
-                item.model,
-                item.serialNumber, // Mapped to serial_number in DB
-                item.location,
+                item.name || 'Sin Nombre', // Name cannot be null in DB
+                item.brand || null,
+                item.model || null,
+                item.serialNumber || null,
+                item.location || null,
                 item.status || 'Operativo',
                 item.lastMaintenanceDate || null,
                 item.nextMaintenanceDate || null
