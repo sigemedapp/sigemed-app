@@ -75,7 +75,11 @@ router.post('/bulk-upload', async (req, res) => {
     } catch (error) {
         await connection.rollback();
         console.error('Error in bulk upload:', error);
-        res.status(500).json({ success: false, message: 'Error durante la carga masiva en la base de datos.' });
+        res.status(500).json({
+            success: false,
+            message: `Error de BD: ${error.sqlMessage || error.message}`,
+            details: error
+        });
     } finally {
         connection.release();
     }
