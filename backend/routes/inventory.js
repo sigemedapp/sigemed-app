@@ -33,7 +33,7 @@ router.get('/', async (req, res) => {
 // POST /api/inventory/bulk-upload - Carga masiva
 router.post('/bulk-upload', async (req, res) => {
     const { items } = req.body;
-    
+
     if (!items || !Array.isArray(items)) {
         return res.status(400).json({ success: false, message: 'Datos inválidos.' });
     }
@@ -44,12 +44,10 @@ router.post('/bulk-upload', async (req, res) => {
 
         for (const item of items) {
             // Generar ID si no existe
-            const id = item.id || `eq-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-            
             const query = `
                 INSERT INTO equipment 
-                (id, name, brand, model, serial_number, location, status, last_maintenance_date, next_maintenance_date)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (name, brand, model, serial_number, location, status, last_maintenance_date, next_maintenance_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE
                 name = VALUES(name),
                 brand = VALUES(brand),
@@ -61,15 +59,14 @@ router.post('/bulk-upload', async (req, res) => {
             `;
 
             await connection.execute(query, [
-                id,
                 item.name,
                 item.brand,
                 item.model,
-                item.serialNumber,
+                item.serialNumber, // Mapped to serial_number in DB
                 item.location,
-                item.status,
+                item.status || 'Operativo',
                 item.lastMaintenanceDate || null,
-                item.nextMaintenanceDate
+                item.nextMaintenanceDate || null
             ]);
         }
 
