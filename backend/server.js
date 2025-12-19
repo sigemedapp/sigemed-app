@@ -32,6 +32,7 @@ console.log("✓ Environment variables validated successfully");
 
 import authRoutes from './routes/auth.js';
 import inventoryRoutes from './routes/inventory.js';
+import workOrderRoutes from './routes/workOrders.js';
 import './db.js';
 
 const app = express();
@@ -62,6 +63,7 @@ app.use(express.json({ limit: '50mb' })); // Aumentado para cargas masivas
 
 app.use('/api/auth', authRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/work-orders', workOrderRoutes);
 
 app.get('/', (req, res) => {
   res.send('SiGEMed Backend is running!');

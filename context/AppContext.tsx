@@ -66,7 +66,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [user, setUser] = useState<User | null>(null);
     const [logEntries, setLogEntries] = useLocalStorage<AuditLogEntry[]>('sigemed-audit-log', []);
     const [equipment, setEquipment] = useState<Equipment[]>([]);
-    const [workOrders, setWorkOrders] = useState<WorkOrder[]>(MOCK_WORK_ORDERS);
+    const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
     const [suppliers, setSuppliers] = useState<Supplier[]>(MOCK_SUPPLIERS);
 
     const baseUrl = process.env.VITE_API_BASE_URL || '';
@@ -92,11 +92,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
     }, [baseUrl]);
 
+    const refreshWorkOrders = useCallback(async () => {
+        try {
+            const url = `${baseUrl}/api/work-orders`;
+            const response = await fetch(url);
+            if (response.ok) {
+                const data = await response.json();
+                setWorkOrders(data);
+                console.log('Work Orders loaded:', data.length);
+            } else {
+                console.warn('Failed to fetch work orders, using empty list.');
+                setWorkOrders([]);
+            }
+        } catch (error) {
+            console.error("Failed to fetch work orders:", error);
+            setWorkOrders([]);
+        }
+    }, [baseUrl]);
+
     useEffect(() => {
         if (user) {
             refreshInventory();
+            refreshWorkOrders();
         }
-    }, [user, refreshInventory]);
+    }, [user, refreshInventory, refreshWorkOrders]);
 
     const _log = useCallback((actor: User, action: string, details?: string) => {
         const newEntry: AuditLogEntry = {
