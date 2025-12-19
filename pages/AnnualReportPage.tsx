@@ -7,12 +7,16 @@ const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', '
 
 const getMaintenanceSchedule = (equipment: Equipment, year: number): { month: number, type: 'MP1' | 'MP2' }[] => {
     const schedule = [];
+    if (!equipment.nextMaintenanceDate || !equipment.lastMaintenanceDate) return [];
+
     const nextMaintDate = new Date(equipment.nextMaintenanceDate);
     const lastMaintDate = new Date(equipment.lastMaintenanceDate);
-    
+
+    if (isNaN(nextMaintDate.getTime()) || isNaN(lastMaintDate.getTime())) return [];
+
     const diffMonths = (nextMaintDate.getFullYear() - lastMaintDate.getFullYear()) * 12 + (nextMaintDate.getMonth() - lastMaintDate.getMonth());
-    
-    const isSemiAnnual = diffMonths <= 7; 
+
+    const isSemiAnnual = diffMonths <= 7;
 
     if (isSemiAnnual) {
         let firstMaintMonth = lastMaintDate.getMonth();
@@ -25,16 +29,16 @@ const getMaintenanceSchedule = (equipment: Equipment, year: number): { month: nu
             secondMaintMonth = (secondMaintMonth + 6) % 12;
         }
 
-        if(firstMaintMonth === secondMaintMonth) secondMaintMonth = (firstMaintMonth + 6) % 12;
+        if (firstMaintMonth === secondMaintMonth) secondMaintMonth = (firstMaintMonth + 6) % 12;
 
-        const sortedMonths = [firstMaintMonth, secondMaintMonth].sort((a,b)=>a-b);
+        const sortedMonths = [firstMaintMonth, secondMaintMonth].sort((a, b) => a - b);
 
         schedule.push({ month: sortedMonths[0], type: 'MP1' });
         schedule.push({ month: sortedMonths[1], type: 'MP2' });
     } else { // Annual
         schedule.push({ month: nextMaintDate.getMonth(), type: 'MP1' });
     }
-    
+
     return schedule;
 };
 
@@ -73,7 +77,7 @@ const LogMaintenanceModal: React.FC<{
     }) => void;
 }> = ({ equipment, year, schedule, completedWOs, onClose, onSave }) => {
     const { user } = useApp();
-    
+
     const getInitialMaintType = () => {
         const isMP1Done = completedWOs.length >= 1;
         if (isMP1Done && schedule.length > 1) return 'MP2';
@@ -105,7 +109,7 @@ const LogMaintenanceModal: React.FC<{
             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
                 <h2 className="text-2xl font-bold mb-4 text-gray-800">Registrar Mantenimiento Realizado</h2>
                 <p className="mb-4 text-gray-600">Equipo: <span className="font-semibold">{equipment.name} (N/S: {equipment.serialNumber})</span></p>
-                
+
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Tipo de Mantenimiento</label>
@@ -118,9 +122,9 @@ const LogMaintenanceModal: React.FC<{
                             {schedule.length > 1 && <option value="MP2" disabled={isMP2Done}>Segundo Mantenimiento</option>}
                         </select>
                     </div>
-                     <div>
+                    <div>
                         <label className="block text-sm font-medium text-gray-700">Fecha de Realización</label>
-                        <input type="date" value={completionDate} onChange={e => setCompletionDate(e.target.value)} required className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"/>
+                        <input type="date" value={completionDate} onChange={e => setCompletionDate(e.target.value)} required className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Realizado por</label>
@@ -129,15 +133,15 @@ const LogMaintenanceModal: React.FC<{
                             {technicians.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                         </select>
                     </div>
-                     <div>
+                    <div>
                         <label className="block text-sm font-medium text-gray-700">Resumen de Actividades</label>
                         <textarea value={summary} onChange={e => setSummary(e.target.value)} required rows={4} className="w-full mt-1 p-2 border border-gray-300 rounded-md" placeholder="Ej: Se realizó limpieza, cambio de filtros y calibración de sensores..."></textarea>
                     </div>
-                     <div>
+                    <div>
                         <label className="block text-sm font-medium text-gray-700">Cargar Evidencia (Opcional)</label>
-                        <input type="file" onChange={e => setEvidenceFile(e.target.files?.[0])} accept=".pdf,.jpg,.png" className="mt-1 block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-brand-blue hover:file:bg-blue-100"/>
+                        <input type="file" onChange={e => setEvidenceFile(e.target.files?.[0])} accept=".pdf,.jpg,.png" className="mt-1 block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-brand-blue hover:file:bg-blue-100" />
                     </div>
-                     <div className="mt-6 flex justify-end space-x-3">
+                    <div className="mt-6 flex justify-end space-x-3">
                         <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">Cancelar</button>
                         <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">Guardar Registro</button>
                     </div>
@@ -149,7 +153,7 @@ const LogMaintenanceModal: React.FC<{
 
 
 const AnnualReportPage: React.FC = () => {
-    const { user, equipment, workOrders, addWorkOrder, updateEquipment, addLogEntry } = useApp();
+    const { user, equipment, workOrders, addWorkOrder, updateEquipment, addLogEntry, isLoading } = useApp();
     const currentYear = new Date().getFullYear();
     const [selectedYear, setSelectedYear] = useState(currentYear);
     const [isExporting, setIsExporting] = useState(false);
@@ -164,6 +168,16 @@ const AnnualReportPage: React.FC = () => {
         nextMaintTo: '',
     };
     const [filters, setFilters] = useState(initialFilters);
+
+    // ... (handlers)
+
+    if (isLoading) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-blue"></div>
+            </div>
+        );
+    }
 
     const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -187,7 +201,7 @@ const AnnualReportPage: React.FC = () => {
         setSelectedEquipment(null);
         setIsModalOpen(false);
     };
-    
+
     const handleSaveMaintenance = (data: {
         maintenanceType: 'MP1' | 'MP2',
         completionDate: string,
@@ -253,11 +267,11 @@ const AnnualReportPage: React.FC = () => {
         try {
             const { jsPDF } = (window as any).jspdf;
             const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-            
+
             doc.setFontSize(16);
             doc.setFont('helvetica', 'bold');
             doc.text(`Calendario Anual de Mantenimiento Preventivo - ${selectedYear}`, 14, 20);
-            
+
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
             doc.text(`Fecha de Exportación: ${new Date().toLocaleString('es-MX')}`, 283, 25, { align: 'right' });
@@ -308,7 +322,7 @@ const AnnualReportPage: React.FC = () => {
                 didDrawCell: (data: any) => {
                     const text = data.cell.text[0];
                     const isMonthColumn = data.column.index >= 6 && data.column.index <= 17;
-                    
+
                     const isFirstMaintCol = data.column.index === 18;
                     const isSecondMaintCol = data.column.index === 19;
                     const isStatusColumn = data.column.index === 20;
@@ -319,7 +333,7 @@ const AnnualReportPage: React.FC = () => {
                         let fillColor;
                         if (text === 'MP1') fillColor = [220, 53, 69];
                         if (text === 'MP2') fillColor = [0, 123, 255];
-                        
+
                         if (fillColor) {
                             doc.setFillColor(...fillColor);
                             doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
@@ -327,9 +341,9 @@ const AnnualReportPage: React.FC = () => {
                             doc.text(text, data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2, { halign: 'center', valign: 'middle' });
                         }
                     }
-                    
+
                     if (currentRowData) {
-                         if (isFirstMaintCol && currentRowData.firstMaintenance.color !== 'default') {
+                        if (isFirstMaintCol && currentRowData.firstMaintenance.color !== 'default') {
                             const color = currentRowData.firstMaintenance.color;
                             if (color === 'green') doc.setTextColor('#28a745');
                             if (color === 'red') doc.setTextColor('#dc3545');
@@ -348,7 +362,7 @@ const AnnualReportPage: React.FC = () => {
                         }
                     }
                 },
-                 didDrawPage: (data: any) => {
+                didDrawPage: (data: any) => {
                     const pageCount = doc.internal.getNumberOfPages();
                     doc.setFontSize(8);
                     doc.setTextColor(150);
@@ -391,25 +405,25 @@ const AnnualReportPage: React.FC = () => {
                 today.setHours(0, 0, 0, 0);
                 let overdueCount = 0;
                 const doneCount = closedPreventiveWOs.length;
-            
+
                 if (schedule.length === 0) {
                     return { text: 'N/A', color: 'default' };
                 }
-            
+
                 schedule.forEach((maint, index) => {
                     const dueDate = new Date(selectedYear, maint.month + 1, 0); // Last day of month
                     dueDate.setHours(23, 59, 59, 999);
                     const isDone = doneCount > index;
-            
+
                     if (!isDone && dueDate < today) {
                         overdueCount++;
                     }
                 });
-            
+
                 if (overdueCount > 0) {
                     return { text: overdueCount > 1 ? 'Vencidos' : 'Vencido', color: 'red' };
                 }
-            
+
                 if (doneCount === schedule.length) {
                     return { text: 'OK', color: 'green' };
                 }
@@ -417,15 +431,15 @@ const AnnualReportPage: React.FC = () => {
                 if (doneCount > 0) {
                     return { text: 'En tiempo', color: 'default' };
                 }
-                
+
                 return { text: 'Pendiente', color: 'blue' };
             };
-            
+
             const monthlyData = Array(12).fill(null);
             schedule.forEach(s => { monthlyData[s.month] = s.type; });
 
             const processMaintenance = (
-                maintSchedule: { month: number; type: 'MP1' | 'MP2' } | undefined, 
+                maintSchedule: { month: number; type: 'MP1' | 'MP2' } | undefined,
                 correspondingWO: WorkOrder | undefined
             ): MaintenanceStatusInfo => {
                 if (!maintSchedule) return { text: '', color: 'default' };
@@ -445,7 +459,7 @@ const AnnualReportPage: React.FC = () => {
 
                 return { text: 'Por Hacer', color: 'blue' };
             };
-            
+
             const firstMaintenanceResult = processMaintenance(schedule[0], closedPreventiveWOs[0]);
             const secondMaintenanceResult = processMaintenance(schedule[1], closedPreventiveWOs[1]);
 
@@ -464,7 +478,7 @@ const AnnualReportPage: React.FC = () => {
                 secondMaintenance: secondMaintenanceResult,
                 status: getMaintenanceStatus(),
             };
-        }).sort((a,b) => a.area.localeCompare(b.area) || parseInt(a.inventoryNumber) - parseInt(b.inventoryNumber));
+        }).sort((a, b) => a.area.localeCompare(b.area) || parseInt(a.inventoryNumber) - parseInt(b.inventoryNumber));
     }, [selectedYear, filters, canSeeMaintenanceFilters, equipment, workOrders]);
 
     return (
@@ -480,12 +494,12 @@ const AnnualReportPage: React.FC = () => {
                 />
             )}
             {notification && (
-                 <div className="fixed top-5 right-5 bg-green-500 text-white py-3 px-5 rounded-lg shadow-lg z-50 animate-fade-in-out">
+                <div className="fixed top-5 right-5 bg-green-500 text-white py-3 px-5 rounded-lg shadow-lg z-50 animate-fade-in-out">
                     {notification}
                 </div>
             )}
-             <div className="print:hidden flex flex-col space-y-4 mb-6">
-                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+            <div className="print:hidden flex flex-col space-y-4 mb-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                     <div className='mb-4 md:mb-0'>
                         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">Calendario Anual de Mantenimiento</h1>
                         <p className="text-gray-600 dark:text-gray-400">Vista general del programa para el año seleccionado.</p>
@@ -538,7 +552,7 @@ const AnnualReportPage: React.FC = () => {
                             </div>
                         </div>
                     </div>
-                 )}
+                )}
             </div>
 
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto">
@@ -555,7 +569,7 @@ const AnnualReportPage: React.FC = () => {
                             <th className="p-3">Primer Mantenimiento</th>
                             <th className="p-3">Segundo Mantenimiento</th>
                             <th className="p-3">Status</th>
-                             {canRegisterMaintenance && <th className="p-3">Acciones</th>}
+                            {canRegisterMaintenance && <th className="p-3">Acciones</th>}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -592,7 +606,7 @@ const AnnualReportPage: React.FC = () => {
                                 )}
                             </tr>
                         ))}
-                         {reportData.length === 0 && (
+                        {reportData.length === 0 && (
                             <tr>
                                 <td colSpan={canRegisterMaintenance ? 22 : 21} className="text-center p-8 text-gray-500 dark:text-gray-400">No se encontraron equipos con los filtros seleccionados.</td>
                             </tr>
