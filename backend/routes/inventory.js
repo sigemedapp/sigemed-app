@@ -85,4 +85,39 @@ router.post('/bulk-upload', async (req, res) => {
     }
 });
 
+// PUT /api/inventory/:id - Actualizar equipo
+router.put('/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, brand, model, serialNumber, location, status, lastMaintenanceDate, nextMaintenanceDate } = req.body;
+
+    try {
+        const query = `
+            UPDATE equipment 
+            SET name = ?, brand = ?, model = ?, serial_number = ?, location = ?, status = ?, last_maintenance_date = ?, next_maintenance_date = ?
+            WHERE id = ?
+        `;
+
+        const [result] = await db.execute(query, [
+            name,
+            brand,
+            model,
+            serialNumber,
+            location,
+            status,
+            lastMaintenanceDate || null,
+            nextMaintenanceDate || null,
+            id
+        ]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: 'Equipo no encontrado.' });
+        }
+
+        res.json({ success: true, message: 'Equipo actualizado correctamente.' });
+    } catch (error) {
+        console.error('Error updating equipment:', error);
+        res.status(500).json({ success: false, message: 'Error al actualizar el equipo.' });
+    }
+});
+
 export default router;

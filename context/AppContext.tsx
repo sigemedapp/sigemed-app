@@ -145,9 +145,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         sessionStorage.removeItem('justLoggedIn');
     }, [user, _log]);
 
-    const updateEquipment = useCallback((updatedEquipment: Equipment) => {
-        setEquipment(prev => prev.map(eq => (eq.id === updatedEquipment.id ? updatedEquipment : eq)));
-    }, []);
+    const updateEquipmentApi = useCallback(async (updatedEq: Equipment) => {
+        try {
+            const url = `${baseUrl}/api/inventory/${updatedEq.id}`;
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedEq)
+            });
+
+            if (response.ok) {
+                setEquipment(prev => prev.map(eq => (eq.id === updatedEq.id ? updatedEq : eq)));
+                return true;
+            } else {
+                console.error("Failed to update equipment api");
+                return false;
+            }
+        } catch (error) {
+            console.error("Error updating equipment:", error);
+            return false;
+        }
+    }, [baseUrl]);
+
+    // Legacy update for mocks/optimistic ui (renamed to avoid conflict if needed, or kept)
+    // We'll expose updateEquipmentApi as updateEquipment for the UI to use seamlessly
+    const updateEquipment = updateEquipmentApi;
+
     const updateWorkOrder = useCallback((updatedWorkOrder: WorkOrder) => {
         setWorkOrders(prev => prev.map(wo => (wo.id === updatedWorkOrder.id ? updatedWorkOrder : wo)));
     }, []);
