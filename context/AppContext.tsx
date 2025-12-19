@@ -58,6 +58,7 @@ interface AppContextType {
     unreadEmailCount: number;
     logEntries: AuditLogEntry[];
     addLogEntry: (action: string, details?: string) => void;
+    isLoading: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -68,6 +69,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [equipment, setEquipment] = useState<Equipment[]>([]);
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
     const [suppliers, setSuppliers] = useState<Supplier[]>(MOCK_SUPPLIERS);
+    const [isLoading, setIsLoading] = useState(true);
 
     const baseUrl = process.env.VITE_API_BASE_URL || '';
 
@@ -89,6 +91,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             console.error("Failed to fetch inventory", error);
             // Fallback to mock if server fails
             setEquipment(MOCK_EQUIPMENT);
+        } finally {
+            setIsLoading(false);
         }
     }, [baseUrl]);
 
@@ -230,7 +234,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         <AppContext.Provider value={{
             user, login, logout, equipment, refreshInventory, workOrders, suppliers, updateEquipment, updateWorkOrder, addWorkOrder, addSupplier, updateSupplier, deleteSupplier,
             theme, toggleTheme, isSidebarOpen, toggleSidebar, closeSidebar, isSearchOpen, openSearch, closeSearch,
-            notifications, unreadCount, markAsRead, markAllAsRead, isPanelOpen, togglePanel, emails: userEmails, sendEmail, markEmailAsRead, unreadEmailCount, logEntries, addLogEntry
+            notifications, unreadCount, markAsRead, markAllAsRead, isPanelOpen, togglePanel, emails: userEmails, sendEmail, markEmailAsRead, unreadEmailCount, logEntries, addLogEntry,
+            isLoading
         }}>
             {children}
         </AppContext.Provider>

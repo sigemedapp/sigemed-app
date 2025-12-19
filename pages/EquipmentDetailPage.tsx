@@ -213,7 +213,7 @@ const EquipmentDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     // FIX: Replaced useAuth, useInventory, and useAuditLog with useApp to resolve module errors.
-    const { user, equipment: allEquipment, workOrders, updateEquipment, addWorkOrder, addLogEntry } = useApp();
+    const { user, equipment: allEquipment, workOrders, updateEquipment, addWorkOrder, addLogEntry, isLoading } = useApp();
 
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -305,6 +305,14 @@ const EquipmentDetailPage: React.FC = () => {
         addLogEntry('Eliminó Documento de Equipo', `Equipo: ${equipment.name}. Documento: ${deletingDocument.name}`);
         setDeletingDocument(null);
     };
+
+    if (isLoading) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-blue"></div>
+            </div>
+        );
+    }
 
     if (!equipment) {
         return (
