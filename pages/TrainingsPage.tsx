@@ -78,10 +78,23 @@ const AdminUploadPanel: React.FC<{ onAddManual: (manual: TrainingManual) => void
                     <input type="number" placeholder="Año" value={year} onChange={e => setYear(parseInt(e.target.value, 10))} required className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                     <textarea placeholder="Descripción" value={description} onChange={e => setDescription(e.target.value)} required rows={3} className="md:col-span-2 w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
                     <div className="md:col-span-2">
-                        <label className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-brand-blue hover:file:bg-blue-100">
-                            <input type="file" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} required accept=".pdf" className="sr-only" />
+                        <label className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-brand-blue transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                            </svg>
                             <span>{file ? file.name : 'Seleccionar archivo PDF...'}</span>
+                            <input type="file" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} required accept=".pdf" className="sr-only" />
                         </label>
+                        {file && (
+                            <button
+                                type="button"
+                                onClick={() => setFile(null)}
+                                className="ml-2 text-sm text-red-500 hover:text-red-700"
+                                title="Quitar archivo"
+                            >
+                                (Quitar)
+                            </button>
+                        )}
                     </div>
                 </div>
                 <div className="mt-4 flex justify-end items-center">
