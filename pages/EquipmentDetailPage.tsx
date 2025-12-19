@@ -221,7 +221,7 @@ const EquipmentDetailPage: React.FC = () => {
     const [isAddDocModalOpen, setIsAddDocModalOpen] = useState(false);
     const [deletingDocument, setDeletingDocument] = useState<EquipmentDocument | null>(null);
 
-    const equipment = useMemo(() => allEquipment.find(e => e.id === id), [allEquipment, id]);
+    const equipment = useMemo(() => allEquipment.find(e => String(e.id) === id), [allEquipment, id]);
 
     const getDynamicStatus = (equipmentItem: Equipment | undefined): EquipmentStatus => {
         if (!equipmentItem) return EquipmentStatus.OUT_OF_SERVICE;
