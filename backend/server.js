@@ -9,11 +9,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const envPath = path.resolve(__dirname, '.env');
 
+// Try to load .env file, but don't crash if it doesn't exist (e.g. in production)
 const dotenvResult = dotenv.config({ path: envPath });
 
-if (dotenvResult.error) {
-  console.error("--- FATAL ERROR: COULD NOT LOAD .env FILE ---");
-  process.exit(1);
+if (dotenvResult.error && process.env.NODE_ENV !== 'production') {
+  console.warn("⚠️  Warning: .env file not found. Relying on system environment variables.");
 }
 
 // Validate required environment variables
