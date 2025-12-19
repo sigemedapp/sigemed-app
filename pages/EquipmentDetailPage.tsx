@@ -79,6 +79,10 @@ const EditEquipmentModal: React.FC<{
                             <label className="block text-sm font-medium text-gray-700">Próximo Mantenimiento</label>
                             <input type="date" name="nextMaintenanceDate" value={formData.nextMaintenanceDate || ''} onChange={handleChange} className="w-full mt-1 px-3 py-2 border rounded-md" />
                         </div>
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700">URL de Imagen</label>
+                            <input type="text" name="imageUrl" value={formData.imageUrl || ''} onChange={handleChange} className="w-full mt-1 px-3 py-2 border rounded-md" placeholder="https://ejemplo.com/imagen.jpg" />
+                        </div>
                     </div>
                     <div className="flex justify-end space-x-3 mt-6">
                         <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">Cancelar</button>

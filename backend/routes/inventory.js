@@ -88,12 +88,12 @@ router.post('/bulk-upload', async (req, res) => {
 // PUT /api/inventory/:id - Actualizar equipo
 router.put('/:id', async (req, res) => {
     const { id } = req.params;
-    const { name, brand, model, serialNumber, location, status, lastMaintenanceDate, nextMaintenanceDate } = req.body;
+    const { name, brand, model, serialNumber, location, status, lastMaintenanceDate, nextMaintenanceDate, imageUrl } = req.body;
 
     try {
         const query = `
             UPDATE equipment 
-            SET name = ?, brand = ?, model = ?, serial_number = ?, location = ?, status = ?, last_maintenance_date = ?, next_maintenance_date = ?
+            SET name = ?, brand = ?, model = ?, serial_number = ?, location = ?, status = ?, last_maintenance_date = ?, next_maintenance_date = ?, image_url = ?
             WHERE id = ?
         `;
 
@@ -106,6 +106,7 @@ router.put('/:id', async (req, res) => {
             status,
             lastMaintenanceDate || null,
             nextMaintenanceDate || null,
+            imageUrl || null,
             id
         ]);
 
