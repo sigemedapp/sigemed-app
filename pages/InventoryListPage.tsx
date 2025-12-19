@@ -65,7 +65,7 @@ const QRScannerModal: React.FC<{ onClose: () => void, onScan: (data: string) => 
                             ctx.lineWidth = 4;
                             ctx.strokeStyle = '#48BB78';
                             ctx.stroke();
-                            
+
                             cleanup();
                             setTimeout(() => onScan(code.data), 300);
                             return;
@@ -103,7 +103,7 @@ const QRScannerModal: React.FC<{ onClose: () => void, onScan: (data: string) => 
                     <video ref={videoRef} className="w-full h-full object-cover" />
                     <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full" />
                 </div>
-                 <p className="text-center mt-4 text-gray-700 font-medium">{scanMessage}</p>
+                <p className="text-center mt-4 text-gray-700 font-medium">{scanMessage}</p>
             </div>
         </div>
     );
@@ -133,7 +133,7 @@ const InventoryListPage: React.FC = () => {
     const navigate = useNavigate();
     // FIX: Replaced useAuth and useInventory with useApp to resolve module errors.
     const { user, equipment, workOrders, addLogEntry } = useApp();
-    
+
     const getDynamicStatus = (equipmentItem: Equipment): EquipmentStatus => {
         const hasActiveWorkOrder = workOrders.some(
             wo => wo.equipmentId === equipmentItem.id && wo.status !== WorkOrderStatus.CLOSED
@@ -174,12 +174,12 @@ const InventoryListPage: React.FC = () => {
         }
     }, [user]);
 
-    const getAreaFromLocation = (location: string): string => location.split(' - ')[0].trim();
+    const getAreaFromLocation = (location: string | null): string => (location || '').split(' - ')[0].trim();
 
     const { allAreas, allNames, allBrands, allModels } = useMemo(() => {
         // FIX: Specified key types to resolve TypeScript errors with `map`.
-        const unique = (key: 'name' | 'brand' | 'model') => [...new Set(equipment.map(e => e[key]))].sort();
-        const uniqueAreas = [...new Set(equipment.map(e => getAreaFromLocation(e.location)))].sort();
+        const unique = (key: 'name' | 'brand' | 'model') => [...new Set(equipment.map(e => e[key] || ''))].sort();
+        const uniqueAreas = [...new Set(equipment.map(e => getAreaFromLocation(e.location)))].filter(Boolean).sort();
 
         return {
             allAreas: uniqueAreas,
@@ -191,7 +191,7 @@ const InventoryListPage: React.FC = () => {
 
     const filteredEquipment = useMemo(() => {
         let filtered = equipment;
-        
+
         if (filters.area !== 'ALL') filtered = filtered.filter(e => getAreaFromLocation(e.location) === filters.area);
         if (filters.name !== 'ALL') filtered = filtered.filter(e => e.name === filters.name);
         if (filters.brand !== 'ALL') filtered = filtered.filter(e => e.brand === filters.brand);
@@ -204,16 +204,16 @@ const InventoryListPage: React.FC = () => {
             const lowercasedTerm = searchTerm.toLowerCase();
             filtered = filtered.filter(e =>
                 // Apply fuzzy search to name and serial number
-                fuzzyMatch(searchTerm, e.name) ||
-                fuzzyMatch(searchTerm, e.serialNumber) ||
+                fuzzyMatch(searchTerm, e.name || '') ||
+                fuzzyMatch(searchTerm, e.serialNumber || '') ||
                 // Keep standard search for other fields
-                e.brand.toLowerCase().includes(lowercasedTerm) ||
-                e.model.toLowerCase().includes(lowercasedTerm) ||
-                e.location.toLowerCase().includes(lowercasedTerm) ||
-                e.id.toLowerCase() === lowercasedTerm
+                (e.brand || '').toLowerCase().includes(lowercasedTerm) ||
+                (e.model || '').toLowerCase().includes(lowercasedTerm) ||
+                (e.location || '').toLowerCase().includes(lowercasedTerm) ||
+                String(e.id).toLowerCase() === lowercasedTerm
             );
         }
-        
+
         return filtered;
     }, [searchTerm, filters, equipment, workOrders]);
 
@@ -234,7 +234,7 @@ const InventoryListPage: React.FC = () => {
             setCurrentPage(page);
         }
     };
-    
+
     const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
         const { name, value } = e.target;
         setFilters(prev => ({ ...prev, [name]: value }));
@@ -255,16 +255,16 @@ const InventoryListPage: React.FC = () => {
             setSearchTerm(qrData);
         }
     };
-    
+
     const handleExportToCSV = () => {
         if (filteredEquipment.length === 0) return;
-    
+
         addLogEntry('Exportó Reporte de Inventario (CSV)');
 
         const headers = [
             "Nombre", "Marca", "Modelo", "N/S", "Ubicación", "Estado", "Próximo Mantenimiento"
         ];
-    
+
         // Helper to format and escape CSV fields robustly
         const formatCSVField = (data: any): string => {
             const value = String(data ?? '');
@@ -274,7 +274,7 @@ const InventoryListPage: React.FC = () => {
             }
             return value;
         };
-    
+
         const csvRows = [
             headers.join(','),
             ...filteredEquipment.map(eq => [
@@ -287,13 +287,13 @@ const InventoryListPage: React.FC = () => {
                 formatCSVField(new Date(eq.nextMaintenanceDate).toLocaleDateString())
             ].join(','))
         ];
-    
+
         const csvString = csvRows.join('\n');
         // Add BOM for Excel compatibility with UTF-8 characters
         const blob = new Blob([`\uFEFF${csvString}`], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
-    
+
         link.setAttribute('href', url);
         link.setAttribute('download', 'reporte_inventario_sigemed.csv');
         link.style.visibility = 'hidden';
@@ -315,9 +315,9 @@ const InventoryListPage: React.FC = () => {
             {isScannerOpen && <QRScannerModal onClose={() => setIsScannerOpen(false)} onScan={handleScanSuccess} />}
 
             <div className="flex flex-col md:flex-row justify-between md:items-center mb-6">
-                 <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 mb-4 md:mb-0">Inventario de Equipos</h1>
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 mb-4 md:mb-0">Inventario de Equipos</h1>
                 <div className="flex items-center space-x-2">
-                    <button 
+                    <button
                         onClick={handleExportToCSV}
                         disabled={filteredEquipment.length === 0}
                         className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 flex items-center disabled:bg-gray-400 disabled:cursor-not-allowed"
@@ -333,7 +333,7 @@ const InventoryListPage: React.FC = () => {
                     )}
                 </div>
             </div>
-            
+
             <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-md mb-6 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                     {/* Independent filters */}
@@ -341,7 +341,7 @@ const InventoryListPage: React.FC = () => {
                         <option value="ALL">Todas las Áreas</option>
                         {allAreas.map(area => <option key={area} value={area}>{area}</option>)}
                     </select>
-                     <select name="name" value={filters.name} onChange={handleFilterChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-brand-blue focus:border-brand-blue dark:bg-slate-700 dark:border-gray-600 dark:text-gray-200">
+                    <select name="name" value={filters.name} onChange={handleFilterChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-brand-blue focus:border-brand-blue dark:bg-slate-700 dark:border-gray-600 dark:text-gray-200">
                         <option value="ALL">Todos los Tipos</option>
                         {allNames.map(name => <option key={name} value={name}>{name}</option>)}
                     </select>
@@ -349,7 +349,7 @@ const InventoryListPage: React.FC = () => {
                         <option value="ALL">Todas las Marcas</option>
                         {allBrands.map(brand => <option key={brand} value={brand}>{brand}</option>)}
                     </select>
-                     <select name="model" value={filters.model} onChange={handleFilterChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-brand-blue focus:border-brand-blue dark:bg-slate-700 dark:border-gray-600 dark:text-gray-200">
+                    <select name="model" value={filters.model} onChange={handleFilterChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-brand-blue focus:border-brand-blue dark:bg-slate-700 dark:border-gray-600 dark:text-gray-200">
                         <option value="ALL">Todos los Modelos</option>
                         {allModels.map(model => <option key={model} value={model}>{model}</option>)}
                     </select>
@@ -361,15 +361,15 @@ const InventoryListPage: React.FC = () => {
                     </select>
                 </div>
 
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t dark:border-gray-700 pt-4">
-                     <input
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t dark:border-gray-700 pt-4">
+                    <input
                         type="text"
                         placeholder="Buscar por Nombre, Marca, Modelo, N/S, Ubicación..."
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-brand-blue focus:border-brand-blue md:col-span-1 dark:bg-slate-700 dark:border-gray-600 dark:text-gray-200"
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                     />
-                     <button onClick={() => setIsScannerOpen(true)} className="w-full bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800 flex items-center justify-center md:col-span-1">
+                    <button onClick={() => setIsScannerOpen(true)} className="w-full bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800 flex items-center justify-center md:col-span-1">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6.364 1.636l-.707.707M20 12h-1M4 12H3m15.364 6.364l-.707-.707M12 20v-1m-6.364-1.636l.707-.707M6 12a6 6 0 1112 0 6 6 0 01-12 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                         Escanear QR
                     </button>
@@ -382,7 +382,7 @@ const InventoryListPage: React.FC = () => {
 
             {/* Responsive Table/Card view */}
             <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto">
-                 <table className="w-full whitespace-nowrap">
+                <table className="w-full whitespace-nowrap">
                     <thead className="text-left font-bold bg-gray-50 dark:bg-slate-700 border-b dark:border-gray-700 text-gray-800 dark:text-gray-300">
                         <tr>
                             <th className="px-6 py-3">Nombre</th>
@@ -402,15 +402,15 @@ const InventoryListPage: React.FC = () => {
                                 <td className="px-6 py-4">{eq.serialNumber}</td>
                                 <td className="px-6 py-4">{eq.location}</td>
                                 <td className="px-6 py-4"><EquipmentStatusBadge status={getDynamicStatus(eq)} /></td>
-                                <td className="px-6 py-4">{new Date(eq.nextMaintenanceDate).toLocaleDateString()}</td>
+                                <td className="px-6 py-4">{eq.nextMaintenanceDate ? new Date(eq.nextMaintenanceDate).toLocaleDateString() : 'N/A'}</td>
                                 <td className="px-6 py-4">
-                                     <Link to={`/inventory/${eq.id}`} className="text-brand-blue hover:underline">Ver detalles</Link>
+                                    <Link to={`/inventory/${eq.id}`} className="text-brand-blue hover:underline">Ver detalles</Link>
                                 </td>
                             </tr>
                         ))}
                     </tbody>
-                 </table>
-                 {filteredEquipment.length === 0 && (
+                </table>
+                {filteredEquipment.length === 0 && (
                     <p className="text-center py-8 text-gray-500 dark:text-gray-400">No se encontraron equipos con los filtros seleccionados.</p>
                 )}
             </div>
@@ -427,23 +427,23 @@ const InventoryListPage: React.FC = () => {
                             <p><strong>Marca/Modelo:</strong> {eq.brand} / {eq.model}</p>
                             <p><strong>N/S:</strong> {eq.serialNumber}</p>
                             <p><strong>Ubicación:</strong> {eq.location}</p>
-                            <p><strong>Próx. Mant.:</strong> {new Date(eq.nextMaintenanceDate).toLocaleDateString()}</p>
+                            <p><strong>Próx. Mant.:</strong> {eq.nextMaintenanceDate ? new Date(eq.nextMaintenanceDate).toLocaleDateString() : 'N/A'}</p>
                         </div>
                         <div className="border-t dark:border-gray-700 pt-3 text-right">
-                             <Link to={`/inventory/${eq.id}`} className="text-brand-blue font-semibold hover:underline">Ver detalles &rarr;</Link>
+                            <Link to={`/inventory/${eq.id}`} className="text-brand-blue font-semibold hover:underline">Ver detalles &rarr;</Link>
                         </div>
                     </div>
                 ))}
             </div>
 
-             {totalPages > 1 && (
+            {totalPages > 1 && (
                 <div className="flex flex-col sm:flex-row justify-between items-center mt-4 p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md print:hidden space-y-2 sm:space-y-0">
                     <span className="text-sm text-gray-700 dark:text-gray-300">
                         Mostrando <span className="font-semibold">{paginatedEquipment.length}</span> de <span className="font-semibold">{filteredEquipment.length}</span> resultados
                     </span>
                     <nav className="flex items-center space-x-2" aria-label="Pagination">
-                        <button 
-                            onClick={() => handlePageChange(currentPage - 1)} 
+                        <button
+                            onClick={() => handlePageChange(currentPage - 1)}
                             disabled={currentPage === 1}
                             className="px-3 py-1 border dark:border-gray-600 rounded-md text-sm font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -452,8 +452,8 @@ const InventoryListPage: React.FC = () => {
                         <span className="text-sm text-gray-500 dark:text-gray-400">
                             Página {currentPage} de {totalPages}
                         </span>
-                        <button 
-                            onClick={() => handlePageChange(currentPage + 1)} 
+                        <button
+                            onClick={() => handlePageChange(currentPage + 1)}
                             disabled={currentPage === totalPages}
                             className="px-3 py-1 border dark:border-gray-600 rounded-md text-sm font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
