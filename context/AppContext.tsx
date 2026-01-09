@@ -187,8 +187,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
             const data = await response.json();
 
-            if (response.ok && data.success && data.equipment) {
-                setEquipment(prev => [...prev, data.equipment]);
+            // Handle both old format {success, id} and new format {success, equipment}
+            if (response.ok && data.success) {
+                if (data.equipment) {
+                    // New format - use equipment object from server
+                    setEquipment(prev => [...prev, data.equipment]);
+                } else if (data.id) {
+                    // Old format - construct equipment object locally
+                    const createdEquipment = {
+                        id: data.id,
+                        ...newEquipment,
+                        brand: newEquipment.brand || 'Genérica',
+                        model: newEquipment.model || 'Desconocido',
+                        serialNumber: newEquipment.serialNumber || `SN-${Date.now()}`,
+                        location: newEquipment.location || 'Almacén General',
+                        status: newEquipment.status || 'Operativo',
+                    };
+                    setEquipment(prev => [...prev, createdEquipment as Equipment]);
+                }
+                await refreshInventory(); // Refresh to get accurate data from server
                 return { success: true, message: 'Equipo agregado correctamente.' };
             }
 
@@ -199,7 +216,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             console.error("Error adding equipment:", error);
             return { success: false, message: 'Error de conexión con el servidor.' };
         }
-    }, [baseUrl]);
+    }, [baseUrl, refreshInventory]);
 
     const updateWorkOrder = useCallback((updatedWorkOrder: WorkOrder) => {
         setWorkOrders(prev => prev.map(wo => (wo.id === updatedWorkOrder.id ? updatedWorkOrder : wo)));
