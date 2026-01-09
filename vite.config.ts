@@ -5,22 +5,29 @@ import react from '@vitejs/plugin-react';
 import process from 'process';
 
 export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, '.', '');
-    return {
-      server: {
-        port: 3000,
-        host: '0.0.0.0',
-      },
-      plugins: [react()],
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.VITE_API_BASE_URL': JSON.stringify(env.VITE_API_BASE_URL || '')
-      },
-      resolve: {
-        alias: {
-          '@': path.resolve(process.cwd(), '.'),
+  const env = loadEnv(mode, '.', '');
+  return {
+    server: {
+      port: 3001, // Avoid conflict with backend on 3000
+      host: '0.0.0.0',
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+          secure: false,
         }
       }
-    };
+    },
+    plugins: [react()],
+    define: {
+      'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      'process.env.VITE_API_BASE_URL': JSON.stringify(env.VITE_API_BASE_URL || 'http://localhost:3000')
+    },
+    resolve: {
+      alias: {
+        '@': path.resolve(process.cwd(), '.'),
+      }
+    }
+  };
 });

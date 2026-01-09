@@ -18,7 +18,7 @@ if (dotenvResult.error && process.env.NODE_ENV !== 'production') {
 
 // Validate required environment variables
 const requiredEnvVars = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'];
-const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+const missingVars = requiredEnvVars.filter(varName => process.env[varName] === undefined);
 
 if (missingVars.length > 0) {
   console.error("--- FATAL ERROR: MISSING REQUIRED ENVIRONMENT VARIABLES ---");
@@ -68,6 +68,13 @@ app.use('/api/auth', authRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/work-orders', workOrderRoutes);
 app.use('/api/resources', manualsRoutes);
+
+// Serve Static Frontend Files (Optional path for development)
+// const publicPath = path.join(__dirname, 'public');
+// app.use(express.static(publicPath));
+
+// API Routes
+app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 app.get('/', (req, res) => {
   res.send('SiGEMed Backend is running!');

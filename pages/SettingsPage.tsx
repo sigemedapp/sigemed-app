@@ -170,7 +170,7 @@ const SettingsPage: React.FC = () => {
 
         // Validate backend URL is configured
         if (!baseUrl) {
-            setMessage('Error: URL del backend no configurada. Por favor configure VITE_API_BASE_URL en .env.local');
+            setMessage('Error: URL del backend no configurada. (VITE_API_BASE_URL)');
             console.error('VITE_API_BASE_URL is not configured. Please set it in .env.local file.');
             return;
         }
@@ -193,8 +193,14 @@ const SettingsPage: React.FC = () => {
                 return obj;
             });
 
+            // Use the configured baseUrl
             const uploadUrl = `${baseUrl}/api/inventory/bulk-upload`;
             console.log('Uploading to:', uploadUrl, 'Items:', items.length);
+
+            // Debug check
+            if (uploadUrl.includes('undefined')) {
+                throw new Error(`La URL del backend no es válida. (Actual: ${uploadUrl})`);
+            }
 
             try {
                 const response = await fetch(uploadUrl, {

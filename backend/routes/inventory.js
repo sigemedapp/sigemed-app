@@ -30,55 +30,103 @@ router.get('/', async (req, res) => {
     }
 });
 
-// POST /api/inventory/bulk-upload - Carga masiva
+// POST /api/inventory/bulk-upload - Carga masiva robusta
 router.post('/bulk-upload', async (req, res) => {
     const { items } = req.body;
 
     if (!items || !Array.isArray(items)) {
-        return res.status(400).json({ success: false, message: 'Datos inválidos.' });
+        return res.status(400).json({ success: false, message: 'Datos inválidos. Se espera un array de items.' });
     }
 
     const connection = await db.getConnection();
+    const results = {
+        total: items.length,
+        success: 0,
+        failed: 0,
+        warnings: [],
+        errors: []
+    };
+
+    // Helper para sanitizar fechas
+    const sanitizeDate = (dateString) => {
+        if (!dateString) return null;
+        const date = new Date(dateString);
+        // Verificar si es una fecha válida
+        if (isNaN(date.getTime())) return null;
+        // Retornar en formato YYYY-MM-DD para MySQL
+        return date.toISOString().split('T')[0];
+    };
+
     try {
-        await connection.beginTransaction();
+        // NOTA: Eliminamos la transacción global para permitir éxito parcial (Ingesta de Máximo Esfuerzo)
 
-        for (const item of items) {
-            // Generar ID si no existe
-            const query = `
-                INSERT INTO equipment 
-                (name, brand, model, serial_number, location, status, last_maintenance_date, next_maintenance_date)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE
-                name = VALUES(name),
-                brand = VALUES(brand),
-                model = VALUES(model),
-                location = VALUES(location),
-                status = VALUES(status),
-                last_maintenance_date = VALUES(last_maintenance_date),
-                next_maintenance_date = VALUES(next_maintenance_date)
-            `;
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            const rowIndex = i + 1; // Para referencia del usuario
 
-            await connection.execute(query, [
-                item.name || 'Sin Nombre', // Name cannot be null in DB
-                item.brand || null,
-                item.model || null,
-                item.serialNumber || null,
-                item.location || null,
-                item.status || 'Operativo',
-                item.lastMaintenanceDate || null,
-                item.nextMaintenanceDate || null
-            ]);
+            // 1. Sanitización y Valores por Defecto (Maximum Effort)
+            const sanitizedItem = {
+                name: item.name || `Equipo Importado #${rowIndex}`, // Garantizar nombre
+                brand: item.brand || 'Genérica',
+                model: item.model || 'Desconocido',
+                serialNumber: item.serialNumber || `SN-AUTO-${Date.now()}-${rowIndex}`, // Garantizar Unique Key si aplica
+                location: item.location || 'Almacén General',
+                status: ['Operativo', 'En Mantenimiento', 'Baja', 'Por Revisar'].includes(item.status) ? item.status : 'Por Revisar',
+                lastMaintenanceDate: sanitizeDate(item.lastMaintenanceDate),
+                nextMaintenanceDate: sanitizeDate(item.nextMaintenanceDate)
+            };
+
+            // Registrar advertencias si se modificaron datos críticos
+            if (!item.name) results.warnings.push(`Fila ${rowIndex}: Se asignó nombre genérico.`);
+            if (item.lastMaintenanceDate && !sanitizedItem.lastMaintenanceDate) results.warnings.push(`Fila ${rowIndex}: Fecha de mant. inválida ignorada.`);
+
+            try {
+                const query = `
+                    INSERT INTO equipment 
+                    (name, brand, model, serial_number, location, status, last_maintenance_date, next_maintenance_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ON DUPLICATE KEY UPDATE
+                    name = VALUES(name),
+                    brand = VALUES(brand),
+                    model = VALUES(model),
+                    location = VALUES(location),
+                    status = VALUES(status),
+                    last_maintenance_date = VALUES(last_maintenance_date),
+                    next_maintenance_date = VALUES(next_maintenance_date)
+                `;
+
+                await connection.execute(query, [
+                    sanitizedItem.name,
+                    sanitizedItem.brand,
+                    sanitizedItem.model,
+                    sanitizedItem.serialNumber,
+                    sanitizedItem.location,
+                    sanitizedItem.status,
+                    sanitizedItem.lastMaintenanceDate,
+                    sanitizedItem.nextMaintenanceDate
+                ]);
+
+                results.success++;
+
+            } catch (innerError) {
+                // Si falla la inserción individual (ej. error de conexión momentáneo o constraint muy estricto no previsto)
+                console.error(`Error processing row ${rowIndex}:`, innerError);
+                results.failed++;
+                results.errors.push(`Fila ${rowIndex}: ${innerError.sqlMessage || innerError.message}`);
+            }
         }
 
-        await connection.commit();
-        res.json({ success: true, message: `${items.length} equipos procesados correctamente.` });
+        res.json({
+            success: true,
+            message: `Proceso completado. ${results.success} equipos procesados.`,
+            details: results
+        });
+
     } catch (error) {
-        await connection.rollback();
-        console.error('Error in bulk upload:', error);
+        console.error('Critical error in bulk upload:', error);
         res.status(500).json({
             success: false,
-            message: `Error de BD: ${error.sqlMessage || error.message}`,
-            details: error
+            message: `Error crítico del servidor: ${error.message}`
         });
     } finally {
         connection.release();
