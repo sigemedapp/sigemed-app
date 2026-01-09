@@ -30,6 +30,54 @@ router.get('/', async (req, res) => {
     }
 });
 
+// POST /api/inventory - Crear un nuevo equipo
+router.post('/', async (req, res) => {
+    const { name, brand, model, serialNumber, location, status, lastMaintenanceDate, nextMaintenanceDate, imageUrl } = req.body;
+
+    if (!name) {
+        return res.status(400).json({ success: false, message: 'El nombre del equipo es obligatorio.' });
+    }
+
+    try {
+        const query = `
+            INSERT INTO equipment 
+            (name, brand, model, serial_number, location, status, last_maintenance_date, next_maintenance_date, image_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        const [result] = await db.execute(query, [
+            name,
+            brand || 'Genérica',
+            model || 'Desconocido',
+            serialNumber || '',
+            location || 'Almacén General',
+            status || 'Operativo',
+            lastMaintenanceDate || null,
+            nextMaintenanceDate || null,
+            imageUrl || null
+        ]);
+
+        const newId = result.insertId;
+        const newEquipment = {
+            id: newId,
+            name,
+            brand: brand || 'Genérica',
+            model: model || 'Desconocido',
+            serialNumber: serialNumber || '',
+            location: location || 'Almacén General',
+            status: status || 'Operativo',
+            lastMaintenanceDate: lastMaintenanceDate || '',
+            nextMaintenanceDate: nextMaintenanceDate || '',
+            imageUrl: imageUrl || null
+        };
+
+        res.status(201).json({ success: true, message: 'Equipo creado exitosamente.', equipment: newEquipment });
+    } catch (error) {
+        console.error('Error creating equipment:', error);
+        res.status(500).json({ success: false, message: 'Error al crear el equipo.' });
+    }
+});
+
 // POST /api/inventory/bulk-upload - Carga masiva robusta
 router.post('/bulk-upload', async (req, res) => {
     const { items } = req.body;

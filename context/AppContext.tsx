@@ -38,6 +38,7 @@ interface AppContextType {
     addSupplier: (newSupplier: Supplier) => void;
     updateSupplier: (updatedSupplier: Supplier) => void;
     deleteSupplier: (supplierId: string) => void;
+    addEquipment: (newEquipment: Omit<Equipment, 'id'>) => Promise<boolean>;
     theme: 'light' | 'dark';
     toggleTheme: () => void;
     isSidebarOpen: boolean;
@@ -175,6 +176,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // We'll expose updateEquipmentApi as updateEquipment for the UI to use seamlessly
     const updateEquipment = updateEquipmentApi;
 
+    const addEquipment = useCallback(async (newEquipment: Omit<Equipment, 'id'>) => {
+        try {
+            const url = `${baseUrl}/api/inventory`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newEquipment)
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.equipment) {
+                    setEquipment(prev => [...prev, data.equipment]);
+                    return true;
+                }
+            }
+            console.error("Failed to add equipment api");
+            return false;
+        } catch (error) {
+            console.error("Error adding equipment:", error);
+            return false;
+        }
+    }, [baseUrl]);
+
     const updateWorkOrder = useCallback((updatedWorkOrder: WorkOrder) => {
         setWorkOrders(prev => prev.map(wo => (wo.id === updatedWorkOrder.id ? updatedWorkOrder : wo)));
     }, []);
@@ -232,7 +257,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     return (
         <AppContext.Provider value={{
-            user, login, logout, equipment, refreshInventory, workOrders, suppliers, updateEquipment, updateWorkOrder, addWorkOrder, addSupplier, updateSupplier, deleteSupplier,
+            user, login, logout, equipment, refreshInventory, workOrders, suppliers, updateEquipment, updateWorkOrder, addWorkOrder, addSupplier, updateSupplier, deleteSupplier, addEquipment,
             theme, toggleTheme, isSidebarOpen, toggleSidebar, closeSidebar, isSearchOpen, openSearch, closeSearch,
             notifications, unreadCount, markAsRead, markAllAsRead, isPanelOpen, togglePanel, emails: userEmails, sendEmail, markEmailAsRead, unreadEmailCount, logEntries, addLogEntry,
             isLoading
