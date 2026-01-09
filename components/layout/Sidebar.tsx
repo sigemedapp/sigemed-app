@@ -17,8 +17,7 @@ const NavItem: React.FC<{ to: string; label: string; icon: React.ReactElement, b
             to={to}
             onClick={handleClick}
             className={({ isActive }) =>
-                `flex items-center justify-between px-4 py-3 text-gray-200 hover:bg-brand-blue-dark hover:text-white rounded-lg transition-colors duration-200 ${
-                    isActive ? 'bg-brand-blue-dark font-semibold text-white' : ''
+                `flex items-center justify-between px-4 py-3 text-gray-200 hover:bg-brand-blue-dark hover:text-white rounded-lg transition-colors duration-200 ${isActive ? 'bg-brand-blue-dark font-semibold text-white' : ''
                 }`
             }
         >
@@ -36,12 +35,12 @@ const NavItem: React.FC<{ to: string; label: string; icon: React.ReactElement, b
 const SiGeMedLogoIcon = () => (
     <div className="relative w-12 h-12">
         <svg viewBox="0 0 24 24" className="w-full h-full text-brand-blue" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-        <svg viewBox="0 0 24 24" className="w-6 h-6 text-white" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-        </svg>
+            <svg viewBox="0 0 24 24" className="w-6 h-6 text-white" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+            </svg>
         </div>
     </div>
 );
@@ -67,7 +66,7 @@ const Sidebar: React.FC = () => {
                 <h1 className="mt-2 text-xl font-semibold text-gray-800 dark:text-gray-200">SiGEMed</h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Gestión de Equipo Médico</p>
             </div>
-            
+
             <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
                 {/* General Section */}
                 {showDashboardLink && <NavItem to="/dashboard" label="Dashboard" icon={<IconHome />} />}
@@ -79,10 +78,10 @@ const Sidebar: React.FC = () => {
                         <NavItem to="/maintenance" label="Mantenimiento" icon={<IconMaintenance />} />
                         <NavItem to="/calibration" label="Calibración" icon={<IconCalibration />} />
                         <NavItem to="/annual-report" label="Calendario Anual" icon={<IconCalendar />} />
-                        <NavItem to="/notifications-email" label="Notificaciones" icon={<IconEmail />} badge={unreadEmailCount}/>
+                        <NavItem to="/notifications-email" label="Notificaciones" icon={<IconEmail />} badge={unreadEmailCount} />
                     </>
                 )}
-                
+
                 {/* Admin Section */}
                 {canSee([Role.SUPER_ADMIN, Role.SYSTEM_ADMIN]) && (
                     <>
@@ -92,21 +91,21 @@ const Sidebar: React.FC = () => {
                 )}
 
                 {/* Documentation Section */}
-                <NavItem to="/procedures" label="Manuales" icon={<IconProcedures />} />
+                <NavItem to="/procedures" label="Formatos" icon={<IconProcedures />} />
                 <NavItem to="/trainings" label="Capacitaciones" icon={<IconTrainings />} />
 
                 {/* Super Admin Section */}
                 {canSee([Role.SUPER_ADMIN]) && (
-                     <div className="pt-4 mt-4 border-t border-slate-700">
+                    <div className="pt-4 mt-4 border-t border-slate-700">
                         <NavItem to="/users" label="Gestionar Usuarios" icon={<IconUsers />} />
                         <NavItem to="/settings" label="Configuración" icon={<IconSettings />} />
                         <NavItem to="/audit-log" label="Auditoría" icon={<IconAuditLog />} />
                     </div>
                 )}
-                
+
                 {/* Footer Section */}
                 <div className="!mt-auto pt-4 border-t border-slate-700">
-                     <NavItem to="/faq" label="Ayuda y FAQ" icon={<IconFAQ />} />
+                    <NavItem to="/faq" label="Ayuda y FAQ" icon={<IconFAQ />} />
                 </div>
             </nav>
         </div>

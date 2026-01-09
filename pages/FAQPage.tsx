@@ -16,8 +16,8 @@ const CodeBlock: React.FC<{ children: string }> = ({ children }) => {
             <pre className="bg-slate-100 dark:bg-slate-900 p-4 rounded-md overflow-x-auto text-sm leading-relaxed">
                 <code>{children.trim()}</code>
             </pre>
-            <button 
-                onClick={handleCopy} 
+            <button
+                onClick={handleCopy}
                 className="absolute top-2 right-2 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded text-xs hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
             >
                 {copied ? '¡Copiado!' : 'Copiar'}
@@ -80,7 +80,7 @@ const FAQPage: React.FC = () => {
                     </div>
                 </FAQItem>
 
-                 <FAQItem question="¿Cómo puedo reportar una falla de un equipo?">
+                <FAQItem question="¿Cómo puedo reportar una falla de un equipo?">
                     <div className="prose dark:prose-invert max-w-none">
                         <p>Reportar una falla es muy sencillo:</p>
                         <ol>
@@ -102,11 +102,81 @@ const FAQPage: React.FC = () => {
                             <strong>Página de Detalles del Equipo:</strong> Cada equipo tiene una sección de "Documentos y Archivos Adjuntos" donde se pueden encontrar manuales específicos para ese modelo, así como facturas, garantías, etc.
                         </li>
                         <li>
-                            <strong>Sección de Manual de Procedimientos:</strong> En el menú lateral, encontrará una sección dedicada a los procedimientos generales del hospital, como protocolos de limpieza, bioseguridad, etc.
+                            <strong>Sección de Formatos:</strong> En el menú lateral, encontrará una sección dedicada a los procedimientos y formatos generales del hospital, como protocolos de limpieza, bioseguridad, etc.
                         </li>
                     </ul>
                 </FAQItem>
-                 <FAQItem question="Estructura de la Base de Datos (Esquema SQL para Hostinger)">
+
+                <FAQItem question="¿Cómo agrego un equipo al inventario de forma individual?">
+                    <div className="prose dark:prose-invert max-w-none">
+                        <p>Ahora puede agregar equipos de forma individual sin necesidad de un archivo CSV:</p>
+                        <ol>
+                            <li>Navegue a <strong>Configuración</strong> en el menú lateral.</li>
+                            <li>En la sección "Carga Masiva de Inventario (CSV)", haga clic en el botón azul <strong>"+ Agregar Equipo Individual"</strong>.</li>
+                            <li>Complete el formulario con los datos del equipo:
+                                <ul>
+                                    <li><strong>Nombre *</strong> (obligatorio)</li>
+                                    <li>Marca, Modelo, Número de Serie, Ubicación</li>
+                                    <li>Estado (Operativo, En Mantenimiento, etc.)</li>
+                                    <li>Fechas de mantenimiento (último y próximo)</li>
+                                </ul>
+                            </li>
+                            <li>Haga clic en <strong>"Guardar"</strong>.</li>
+                        </ol>
+                        <p className="text-green-600 dark:text-green-400 font-semibold">Si el equipo se guarda correctamente, el modal se cerrará y verá un mensaje de confirmación.</p>
+                        <p className="text-red-600 dark:text-red-400">Si hay un error (por ejemplo, número de serie duplicado), se mostrará un mensaje indicando el problema.</p>
+                    </div>
+                </FAQItem>
+
+                <FAQItem question="¿Cuál es el formato correcto del archivo CSV para carga masiva?">
+                    <div className="prose dark:prose-invert max-w-none">
+                        <p>Para cargar equipos de forma masiva, su archivo CSV debe tener las siguientes columnas en la primera fila (encabezados):</p>
+
+                        <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600 my-4 text-sm">
+                            <thead>
+                                <tr className="bg-gray-100 dark:bg-slate-700">
+                                    <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-left">Columna</th>
+                                    <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-left">Obligatorio</th>
+                                    <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-left">Formato / Valores</th>
+                                    <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-left">Ejemplo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td className="border border-gray-300 dark:border-gray-600 px-3 py-2"><code>name</code></td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">Sí</td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">Texto libre</td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">Monitor de Signos Vitales</td></tr>
+                                <tr><td className="border border-gray-300 dark:border-gray-600 px-3 py-2"><code>brand</code></td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">No</td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">Texto libre (Default: "Genérica")</td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">Philips</td></tr>
+                                <tr><td className="border border-gray-300 dark:border-gray-600 px-3 py-2"><code>model</code></td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">No</td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">Texto libre (Default: "Desconocido")</td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">IntelliVue MX700</td></tr>
+                                <tr><td className="border border-gray-300 dark:border-gray-600 px-3 py-2"><code>serialNumber</code></td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">Recomendado</td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">Texto único. Si está vacío, se genera automáticamente.</td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">DE12345678</td></tr>
+                                <tr><td className="border border-gray-300 dark:border-gray-600 px-3 py-2"><code>location</code></td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">No</td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">Texto libre (Default: "Almacén General")</td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">UCI - Cama 1</td></tr>
+                                <tr><td className="border border-gray-300 dark:border-gray-600 px-3 py-2"><code>status</code></td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">No</td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">Operativo, En Mantenimiento, Baja, Por Revisar</td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">Operativo</td></tr>
+                                <tr><td className="border border-gray-300 dark:border-gray-600 px-3 py-2"><code>lastMaintenanceDate</code></td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">No</td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2 font-bold text-blue-600 dark:text-blue-400">AAAA-MM-DD (Ej: 2024-11-15)</td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">2024-11-15</td></tr>
+                                <tr><td className="border border-gray-300 dark:border-gray-600 px-3 py-2"><code>nextMaintenanceDate</code></td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">No</td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2 font-bold text-blue-600 dark:text-blue-400">AAAA-MM-DD (Ej: 2025-02-15)</td><td className="border border-gray-300 dark:border-gray-600 px-3 py-2">2025-02-15</td></tr>
+                            </tbody>
+                        </table>
+
+                        <h4 className="font-bold mt-4">⚠️ Formato de Fechas Importante:</h4>
+                        <p className="text-orange-600 dark:text-orange-400">
+                            Las fechas deben estar en formato <strong>AAAA-MM-DD</strong> (Año-Mes-Día con guiones). Ejemplos:
+                        </p>
+                        <ul className="list-disc pl-5">
+                            <li><strong>Correcto:</strong> 2024-11-15, 2025-01-20</li>
+                            <li><strong>Incorrecto:</strong> 15/11/2024, 11-15-2024, Nov 15 2024</li>
+                        </ul>
+
+                        <h4 className="font-bold mt-4">Ejemplo de archivo CSV:</h4>
+                        <CodeBlock>{`name,brand,model,serialNumber,location,status,lastMaintenanceDate,nextMaintenanceDate
+Monitor Cardiaco,Philips,IntelliVue MP5,SN001234,Urgencias,Operativo,2024-11-15,2025-02-15
+Ventilador Mecánico,Medtronic,PB840,SN005678,UCI,Operativo,2024-10-20,2025-01-20
+Desfibrilador,ZOLL,M Series,SN009012,Quirófano 1,En Mantenimiento,2024-09-30,2024-12-30`}</CodeBlock>
+
+                        <p className="mt-4"><strong>Notas adicionales:</strong></p>
+                        <ul className="list-disc pl-5">
+                            <li>Si un número de serie ya existe, el sistema actualizará ese equipo en lugar de duplicarlo.</li>
+                            <li>Campos vacíos tomarán valores por defecto.</li>
+                            <li>El sistema reportará advertencias y errores al finalizar la carga.</li>
+                        </ul>
+                    </div>
+                </FAQItem>
+                <FAQItem question="Estructura de la Base de Datos (Esquema SQL para Hostinger)">
                     <div className="prose dark:prose-invert max-w-none">
                         <p>
                             A continuación se presenta el esquema SQL completo para crear todas las tablas necesarias en tu base de datos en Hostinger.
@@ -161,7 +231,7 @@ CREATE TABLE equipment_documents (
 
                         <h4 className="font-bold mt-4">4. Tabla `work_orders`</h4>
                         <p>Contiene todas las órdenes de trabajo, ya sean preventivas, correctivas o de calibración.</p>
-                         <CodeBlock>{`
+                        <CodeBlock>{`
 CREATE TABLE work_orders (
     id VARCHAR(50) PRIMARY KEY,
     equipment_id VARCHAR(50) NOT NULL,
@@ -193,7 +263,7 @@ CREATE TABLE work_order_history (
     FOREIGN KEY (user_id) REFERENCES users(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
                         `}</CodeBlock>
-                        
+
                         <h4 className="font-bold mt-4">6. Otras Tablas (Proveedores, Manuales, Auditoría)</h4>
                         <p>Tablas adicionales para funcionalidades de soporte.</p>
                         <CodeBlock>{`
@@ -236,10 +306,10 @@ CREATE TABLE audit_log (
                     </div>
                 </FAQItem>
 
-                 <FAQItem question="Solución de Problemas: El login de demostración no funciona o quiero reiniciar la base de datos">
+                <FAQItem question="Solución de Problemas: El login de demostración no funciona o quiero reiniciar la base de datos">
                     <div className="prose dark:prose-invert max-w-none">
-                         <p>
-                           Si tienes problemas para iniciar sesión con los usuarios de demostración, o si simplemente quieres restaurar la base de datos a su estado inicial, la causa más común es que los datos se insertaron incorrectamente o se corrompieron.
+                        <p>
+                            Si tienes problemas para iniciar sesión con los usuarios de demostración, o si simplemente quieres restaurar la base de datos a su estado inicial, la causa más común es que los datos se insertaron incorrectamente o se corrompieron.
                         </p>
                         <p className="font-bold text-orange-500">
                             La siguiente consulta SQL es un "reinicio total". Borrará todos los datos de todas las tablas y los volverá a insertar de forma limpia y en el orden correcto.
