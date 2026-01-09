@@ -176,7 +176,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // We'll expose updateEquipmentApi as updateEquipment for the UI to use seamlessly
     const updateEquipment = updateEquipmentApi;
 
-    const addEquipment = useCallback(async (newEquipment: Omit<Equipment, 'id'>) => {
+    const addEquipment = useCallback(async (newEquipment: Omit<Equipment, 'id'>): Promise<{ success: boolean; message: string }> => {
         try {
             const url = `${baseUrl}/api/inventory`;
             const response = await fetch(url, {
@@ -185,18 +185,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                 body: JSON.stringify(newEquipment)
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success && data.equipment) {
-                    setEquipment(prev => [...prev, data.equipment]);
-                    return true;
-                }
+            const data = await response.json();
+
+            if (response.ok && data.success && data.equipment) {
+                setEquipment(prev => [...prev, data.equipment]);
+                return { success: true, message: 'Equipo agregado correctamente.' };
             }
-            console.error("Failed to add equipment api");
-            return false;
+
+            // Return error message from server or fallback
+            console.error("Failed to add equipment api:", data.message);
+            return { success: false, message: data.message || 'Error al agregar el equipo.' };
         } catch (error) {
             console.error("Error adding equipment:", error);
-            return false;
+            return { success: false, message: 'Error de conexión con el servidor.' };
         }
     }, [baseUrl]);
 

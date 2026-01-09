@@ -332,14 +332,14 @@ const SettingsPage: React.FC = () => {
 
             {isAddModalOpen && (
                 <AddEquipmentModal onClose={() => setIsAddModalOpen(false)} onSave={async (newEq) => {
-                    const success = await addEquipment(newEq);
-                    if (success) {
+                    const result = await addEquipment(newEq);
+                    if (result.success) {
                         addLogEntry('Creación Manual de Equipo', `Equipo: ${newEq.name}`);
                         setIsAddModalOpen(false);
-                        setMessage('Equipo agregado correctamente.'); // Reusing message state for simplicity feedback
+                        setMessage(result.message);
                         setTimeout(() => setMessage(''), 3000);
                     } else {
-                        alert('Error al agregar el equipo');
+                        alert(result.message); // Show the specific error message from the server
                     }
                 }} />
             )}

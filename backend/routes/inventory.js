@@ -74,6 +74,10 @@ router.post('/', async (req, res) => {
         res.status(201).json({ success: true, message: 'Equipo creado exitosamente.', equipment: newEquipment });
     } catch (error) {
         console.error('Error creating equipment:', error);
+        // Handle duplicate serial number error specifically
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ success: false, message: 'El número de serie ya existe en la base de datos. Por favor, use un número de serie diferente.' });
+        }
         res.status(500).json({ success: false, message: 'Error al crear el equipo.' });
     }
 });
