@@ -72,7 +72,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [suppliers, setSuppliers] = useState<Supplier[]>(MOCK_SUPPLIERS);
     const [isLoading, setIsLoading] = useState(true);
 
-    const baseUrl = process.env.VITE_API_BASE_URL || '';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
 
     const refreshInventory = useCallback(async () => {
         try {

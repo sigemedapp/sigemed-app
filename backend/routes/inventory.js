@@ -49,7 +49,7 @@ router.post('/', async (req, res) => {
             name,
             brand || 'Genérica',
             model || 'Desconocido',
-            serialNumber || '',
+            serialNumber || `SN-${Date.now()}-${Math.floor(Math.random() * 1000)}`, // Generar SN único si no existe
             location || 'Almacén General',
             status || 'Operativo',
             lastMaintenanceDate || null,
@@ -63,7 +63,7 @@ router.post('/', async (req, res) => {
             name,
             brand: brand || 'Genérica',
             model: model || 'Desconocido',
-            serialNumber: serialNumber || '',
+            serialNumber: serialNumber || `SN-${Date.now()}-${Math.floor(Math.random() * 1000)}`, // Maintain consistency
             location: location || 'Almacén General',
             status: status || 'Operativo',
             lastMaintenanceDate: lastMaintenanceDate || '',
