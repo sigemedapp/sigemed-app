@@ -567,7 +567,8 @@ const EquipmentDetailPage: React.FC = () => {
                                     justificacion: decommissionData?.justificacion || 'Equipo dado de baja del sistema',
                                     localidad: decommissionData?.localidad || 'Ciudad de México',
                                     delegacionMunicipio: decommissionData?.delegacionMunicipio || '',
-                                    encargadoDepto: decommissionData?.encargadoDepto || ''
+                                    encargadoDepto: decommissionData?.encargadoDepto || '',
+                                    unidad: decommissionData?.unidad || ''
                                 };
                                 regenerateSinglePDF(pdfData, 'acta');
                             }}

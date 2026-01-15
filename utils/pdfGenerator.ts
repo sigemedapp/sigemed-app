@@ -26,6 +26,7 @@ export interface DecommissionData {
     localidad?: string;
     delegacionMunicipio?: string;
     encargadoDepto?: string;
+    unidad?: string;
 }
 
 // Helper function to add text with word wrap
@@ -241,7 +242,7 @@ export const generateActaAdministrativa = (data: DecommissionData): jsPDF => {
     const año = fechaActual.getFullYear();
     const hora = fechaActual.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 
-    const paragraph1 = `En la localidad de ${data.localidad || '_________________'}, de la/el Delegación/Municipio de ${data.delegacionMunicipio || '_________________'}, siendo las ${hora} horas del día ${dia} de ${mes} del año ${año}, en las instalaciones del Hospital de Traumatología y Especialidades Médicas Polanco, Unidad ${data.encargadoDepto || '_________________'}, del Departamento de Ingeniería Biomédica, con domicilio en esta Ciudad, el que suscribe ${data.encargadoDepto || '_________________'}, Encargado del Departamento de Ingeniería Biomédica de la unidad antes mencionada, hace constar lo siguiente:`;
+    const paragraph1 = `En la localidad de ${data.localidad || '_________________'}, de la/el Delegación/Municipio de ${data.delegacionMunicipio || '_________________'}, siendo las ${hora} horas del día ${dia} de ${mes} del año ${año}, en las instalaciones del Hospital de Traumatología y Especialidades Médicas Polanco, Unidad ${data.unidad || '_________________'}, del Departamento de Ingeniería Biomédica, con domicilio en esta Ciudad, el que suscribe ${data.encargadoDepto || '_________________'}, Encargado del Departamento de Ingeniería Biomédica de la unidad antes mencionada, hace constar lo siguiente:`;
 
     y = addWrappedText(doc, paragraph1, margin, y, contentWidth, 6);
     y += 10;

@@ -17,6 +17,7 @@ export interface DecommissionFormData {
     localidad?: string;
     delegacionMunicipio?: string;
     encargadoDepto?: string;
+    unidad?: string;
 }
 
 interface DecommissionModalProps {
@@ -43,7 +44,8 @@ const DecommissionModal: React.FC<DecommissionModalProps> = ({ equipment, onClos
         // Administrative fields
         localidad: 'Ciudad de México',
         delegacionMunicipio: 'Cuauhtémoc',
-        encargadoDepto: ''
+        encargadoDepto: '',
+        unidad: 'Hospital de Traumatología y Especialidades Médicas Polanco'
     });
 
     const [isGenerating, setIsGenerating] = useState(false);
@@ -88,7 +90,8 @@ const DecommissionModal: React.FC<DecommissionModalProps> = ({ equipment, onClos
                 // Administrative fields
                 localidad: formData.localidad,
                 delegacionMunicipio: formData.delegacionMunicipio,
-                encargadoDepto: formData.encargadoDepto
+                encargadoDepto: formData.encargadoDepto,
+                unidad: formData.unidad
             };
 
             // Generate PDFs with staggered downloads
@@ -186,16 +189,56 @@ const DecommissionModal: React.FC<DecommissionModalProps> = ({ equipment, onClos
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Encargado del Departamento</label>
-                        <input
-                            type="text"
-                            name="encargadoDepto"
-                            value={formData.encargadoDepto}
-                            onChange={handleChange}
-                            className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-                            placeholder="Nombre del encargado"
-                        />
+                    <div className="border-t pt-4 mt-4 mb-4">
+                        <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Datos para Acta Administrativa</h4>
+                        <div className="grid grid-cols-2 gap-4 mb-3">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Localidad</label>
+                                <input
+                                    type="text"
+                                    name="localidad"
+                                    value={formData.localidad}
+                                    onChange={handleChange}
+                                    className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                                    placeholder="Ej: Ciudad de México"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Delegación/Municipio</label>
+                                <input
+                                    type="text"
+                                    name="delegacionMunicipio"
+                                    value={formData.delegacionMunicipio}
+                                    onChange={handleChange}
+                                    className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                                    placeholder="Ej: Cuauhtémoc"
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Unidad Médica</label>
+                                <input
+                                    type="text"
+                                    name="unidad"
+                                    value={formData.unidad}
+                                    onChange={handleChange}
+                                    className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                                    placeholder="Ej: U.M. Polanco"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Encargado del Depto.</label>
+                                <input
+                                    type="text"
+                                    name="encargadoDepto"
+                                    value={formData.encargadoDepto}
+                                    onChange={handleChange}
+                                    className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                                    placeholder="Nombre del encargado"
+                                />
+                            </div>
+                        </div>
                     </div>
 
                     {/* Radiation Equipment Checkbox */}
