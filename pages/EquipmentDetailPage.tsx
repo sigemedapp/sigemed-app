@@ -4,6 +4,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MOCK_USERS } from '../constants';
 import { Equipment, EquipmentStatus, WorkOrderType, WorkOrderStatus, EquipmentDocument, DocumentType, Role } from '../components/layout/types';
 import { useApp } from '../context/AppContext';
+import DecommissionModal from '../components/DecommissionModal';
 
 const EquipmentStatusBadge: React.FC<{ status: EquipmentStatus }> = ({ status }) => {
     const baseClasses = "px-2 inline-flex text-xs leading-5 font-semibold rounded-full";
@@ -226,6 +227,7 @@ const EquipmentDetailPage: React.FC = () => {
     const [deletingDocument, setDeletingDocument] = useState<EquipmentDocument | null>(null);
     const [isDeleteEquipmentModalOpen, setIsDeleteEquipmentModalOpen] = useState(false);
     const [deleteMessage, setDeleteMessage] = useState('');
+    const [isDecommissionModalOpen, setIsDecommissionModalOpen] = useState(false);
 
     const equipment = useMemo(() => allEquipment.find(e => String(e.id) === id), [allEquipment, id]);
 
@@ -312,15 +314,16 @@ const EquipmentDetailPage: React.FC = () => {
         setDeletingDocument(null);
     };
 
-    // Handle marking equipment as decommissioned (Fuera de Servicio)
-    const handleDecommission = async () => {
+    // Handle marking equipment as decommissioned (Fuera de Servicio) - called from DecommissionModal
+    const handleDecommissionConfirm = async () => {
         if (!equipment) return;
         const success = await updateEquipment({ ...equipment, status: EquipmentStatus.OUT_OF_SERVICE });
         if (success) {
-            addLogEntry('Dio de Baja Equipo', `Equipo: ${equipment.name} (N/S: ${equipment.serialNumber}) marcado como Fuera de Servicio`);
-            setDeleteMessage('Equipo marcado como Fuera de Servicio.');
-            setTimeout(() => setDeleteMessage(''), 3000);
+            addLogEntry('Dio de Baja Equipo con PDFs', `Equipo: ${equipment.name} (N/S: ${equipment.serialNumber}) - Se generaron formatos de baja`);
+            setDeleteMessage('¡PDFs generados! Equipo marcado como Fuera de Servicio.');
+            setTimeout(() => setDeleteMessage(''), 4000);
         }
+        setIsDecommissionModalOpen(false);
     };
 
     // Handle permanent deletion of equipment
@@ -409,6 +412,15 @@ const EquipmentDetailPage: React.FC = () => {
                 </div>
             )}
 
+            {/* Decommission Modal with PDF generation */}
+            {isDecommissionModalOpen && equipment && (
+                <DecommissionModal
+                    equipment={equipment}
+                    onClose={() => setIsDecommissionModalOpen(false)}
+                    onConfirm={handleDecommissionConfirm}
+                />
+            )}
+
             <button onClick={() => navigate(-1)} className="mb-6 text-sm text-gray-600 hover:text-gray-900 flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
                 Volver
@@ -451,7 +463,7 @@ const EquipmentDetailPage: React.FC = () => {
                                                 Editar
                                             </button>
                                             {equipment.status !== EquipmentStatus.OUT_OF_SERVICE && (
-                                                <button onClick={handleDecommission} className="text-sm flex items-center gap-1 text-orange-600 hover:text-orange-800 transition-colors bg-orange-50 hover:bg-orange-100 px-3 py-1 rounded-full" title="Dar de Baja">
+                                                <button onClick={() => setIsDecommissionModalOpen(true)} className="text-sm flex items-center gap-1 text-orange-600 hover:text-orange-800 transition-colors bg-orange-50 hover:bg-orange-100 px-3 py-1 rounded-full" title="Dar de Baja">
                                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
                                                     Dar de Baja
                                                 </button>
