@@ -201,6 +201,12 @@ const SettingsPage: React.FC = () => {
     const [uploading, setUploading] = useState(false);
     const [message, setMessage] = useState('');
 
+    // Duplicate detection state
+    const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+    const [duplicatesFound, setDuplicatesFound] = useState<{ serialNumber: string, name: string, brand: string, model: string }[]>([]);
+    const [pendingItems, setPendingItems] = useState<any[]>([]);
+    const [duplicateSerialNumbers, setDuplicateSerialNumbers] = useState<string[]>([]);
+
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
@@ -233,21 +239,101 @@ const SettingsPage: React.FC = () => {
         }
     };
 
+    // Process the actual upload with the given mode
+    const processUpload = async (items: any[], mode: 'all' | 'new-only', skipSerialNumbers: string[] = []) => {
+        const uploadUrl = `${baseUrl}/api/inventory/bulk-upload`;
+
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+            const response = await fetch(uploadUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items, mode, skipSerialNumbers }),
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('text/html')) {
+                setMessage(`Error del servidor: El servidor devolvió una página de error (${response.status}).`);
+                return;
+            }
+
+            let data;
+            try {
+                data = await response.json();
+            } catch {
+                setMessage('Error: El servidor no devolvió una respuesta válida.');
+                return;
+            }
+
+            if (response.ok && data.success) {
+                setMessage(`¡Éxito! ${data.message}`);
+                addLogEntry('Carga Masiva de Inventario', `Archivo: ${file?.name || 'CSV'}, Modo: ${mode === 'all' ? 'Todo' : 'Solo nuevos'}`);
+                await refreshInventory();
+                setFile(null);
+                setPendingItems([]);
+                setDuplicatesFound([]);
+                setDuplicateSerialNumbers([]);
+
+                const fileInput = document.getElementById('bulk-file') as HTMLInputElement;
+                if (fileInput) fileInput.value = '';
+            } else {
+                setMessage(`Error: ${data.message || 'Error desconocido'}`);
+            }
+        } catch (error) {
+            if (error instanceof Error) {
+                if (error.name === 'AbortError') {
+                    setMessage('Error: La operación tardó demasiado tiempo.');
+                } else {
+                    setMessage(`Error: ${error.message}`);
+                }
+            } else {
+                setMessage('Error desconocido al conectar con el servidor.');
+            }
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    // Handle user's choice from duplicate modal
+    const handleDuplicateChoice = async (choice: 'update-all' | 'new-only' | 'cancel') => {
+        setShowDuplicateModal(false);
+
+        if (choice === 'cancel') {
+            setMessage('Carga cancelada.');
+            setPendingItems([]);
+            setDuplicatesFound([]);
+            setDuplicateSerialNumbers([]);
+            return;
+        }
+
+        setUploading(true);
+        setMessage('Procesando...');
+
+        if (choice === 'update-all') {
+            await processUpload(pendingItems, 'all');
+        } else {
+            await processUpload(pendingItems, 'new-only', duplicateSerialNumbers);
+        }
+    };
+
     const handleUpload = async () => {
         if (!file) {
             setMessage('Por favor, seleccione un archivo CSV.');
             return;
         }
 
-        // Validate backend URL is configured
         if (!baseUrl) {
-            setMessage('Error: URL del backend no configurada. (VITE_API_BASE_URL)');
-            console.error('VITE_API_BASE_URL is not configured. Please set it in .env.local file.');
+            setMessage('Error: URL del backend no configurada.');
             return;
         }
 
         setUploading(true);
-        setMessage('Procesando archivo...');
+        setMessage('Verificando duplicados...');
 
         const reader = new FileReader();
         reader.onload = async (e) => {
@@ -264,108 +350,44 @@ const SettingsPage: React.FC = () => {
                 return obj;
             });
 
-            // Use the configured baseUrl
-            const uploadUrl = `${baseUrl}/api/inventory/bulk-upload`;
-            console.log('Uploading to:', uploadUrl, 'Items:', items.length);
-
-            // Debug check
-            if (uploadUrl.includes('undefined')) {
-                setMessage('Error: La URL del backend no es válida.');
-                setUploading(false);
-                return;
-            }
+            // Extract serial numbers for duplicate check
+            const serialNumbers = items.map(item => item.serialNumber).filter(sn => sn);
 
             try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
-
-                const response = await fetch(uploadUrl, {
+                // Check for duplicates first
+                const checkUrl = `${baseUrl}/api/inventory/check-duplicates`;
+                const checkResponse = await fetch(checkUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ items }),
-                    signal: controller.signal
+                    body: JSON.stringify({ serialNumbers })
                 });
 
-                clearTimeout(timeoutId);
-
-                // Check if response is HTML (error page) instead of JSON
-                const contentType = response.headers.get('content-type');
+                const contentType = checkResponse.headers.get('content-type');
                 if (contentType && contentType.includes('text/html')) {
-                    console.error('Server returned HTML instead of JSON. Status:', response.status);
-                    setMessage(`Error del servidor: El servidor devolvió una página de error (${response.status}). Intente con menos registros o verifique la conexión.`);
+                    // Fallback: proceed without duplicate check
+                    console.warn('Duplicate check endpoint not available, proceeding with upload');
+                    await processUpload(items, 'all');
                     return;
                 }
 
-                // Try to parse JSON
-                let data;
-                try {
-                    data = await response.json();
-                } catch (parseError) {
-                    console.error('Failed to parse response as JSON:', parseError);
-                    setMessage('Error: El servidor no devolvió una respuesta válida. Esto puede deberse a un timeout o error interno.');
-                    return;
-                }
+                const checkData = await checkResponse.json();
 
-                if (response.ok && data.success) {
-                    // Build detailed success message
-                    let successMsg = `¡Éxito! ${data.message}`;
-
-                    if (data.details) {
-                        const { success: processed, failed, warnings, errors } = data.details;
-
-                        if (failed > 0) {
-                            successMsg += `\n⚠️ ${failed} registro(s) fallaron.`;
-                        }
-
-                        if (warnings && warnings.length > 0) {
-                            console.log('Warnings:', warnings);
-                        }
-
-                        if (errors && errors.length > 0) {
-                            console.error('Errors:', errors);
-                            successMsg += '\nRevise la consola para ver detalles de errores.';
-                        }
-                    }
-
-                    setMessage(successMsg);
-                    addLogEntry('Carga Masiva de Inventario', `Archivo: ${file.name}, Items: ${items.length}`);
-                    await refreshInventory();
-                    setFile(null);
-
-                    // Reset file input
-                    const fileInput = document.getElementById('bulk-file') as HTMLInputElement;
-                    if (fileInput) fileInput.value = '';
+                if (checkData.success && checkData.duplicates && checkData.duplicates.length > 0) {
+                    // Duplicates found - show modal
+                    setDuplicatesFound(checkData.existingEquipment || []);
+                    setDuplicateSerialNumbers(checkData.duplicates);
+                    setPendingItems(items);
+                    setShowDuplicateModal(true);
+                    setUploading(false);
+                    setMessage('');
                 } else {
-                    // Server returned an error response
-                    let errorMsg = data.message || 'Error desconocido del servidor';
-
-                    if (data.details && data.details.errors) {
-                        const sampleErrors = data.details.errors.slice(0, 3);
-                        errorMsg += '\n' + sampleErrors.join('\n');
-                        if (data.details.errors.length > 3) {
-                            errorMsg += `\n... y ${data.details.errors.length - 3} más.`;
-                        }
-                    }
-
-                    setMessage(`Error: ${errorMsg}`);
-                    console.error('Server error:', response.status, data);
+                    // No duplicates - proceed with upload
+                    await processUpload(items, 'all');
                 }
             } catch (error) {
-                console.error('Upload error:', error);
-
-                if (error instanceof Error) {
-                    if (error.name === 'AbortError') {
-                        setMessage('Error: La operación tardó demasiado tiempo. Intente con un archivo más pequeño.');
-                    } else if (error.message.includes('Failed to fetch')) {
-                        setMessage('Error de conexión: No se pudo conectar con el servidor. Verifique su conexión a internet.');
-                    } else {
-                        setMessage(`Error: ${error.message}`);
-                    }
-                } else {
-                    setMessage('Error desconocido al conectar con el servidor.');
-                }
-            } finally {
-                setUploading(false);
+                console.error('Error checking duplicates:', error);
+                // If check fails, proceed with regular upload
+                await processUpload(items, 'all');
             }
         };
         reader.readAsText(file);
@@ -395,6 +417,76 @@ const SettingsPage: React.FC = () => {
 
     return (
         <div className="pb-10">
+            {/* Duplicate Confirmation Modal */}
+            {showDuplicateModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
+                        <div className="flex items-center mb-4">
+                            <svg className="h-8 w-8 text-yellow-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">
+                                Se encontraron equipos duplicados
+                            </h2>
+                        </div>
+
+                        <p className="text-gray-600 dark:text-gray-300 mb-4">
+                            Los siguientes <strong>{duplicatesFound.length}</strong> número(s) de serie ya existen en el inventario:
+                        </p>
+
+                        <div className="bg-gray-50 dark:bg-slate-700 rounded-md p-3 mb-4 max-h-40 overflow-y-auto">
+                            <ul className="space-y-1 text-sm">
+                                {duplicatesFound.slice(0, 10).map((eq, idx) => (
+                                    <li key={idx} className="flex items-center text-gray-700 dark:text-gray-300">
+                                        <span className="font-mono bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 px-2 py-0.5 rounded mr-2">
+                                            {eq.serialNumber}
+                                        </span>
+                                        <span className="truncate">{eq.name} - {eq.brand}</span>
+                                    </li>
+                                ))}
+                                {duplicatesFound.length > 10 && (
+                                    <li className="text-gray-500 dark:text-gray-400 italic">
+                                        ... y {duplicatesFound.length - 10} más
+                                    </li>
+                                )}
+                            </ul>
+                        </div>
+
+                        <p className="text-gray-600 dark:text-gray-300 mb-6">
+                            ¿Qué desea hacer?
+                        </p>
+
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <button
+                                onClick={() => handleDuplicateChoice('update-all')}
+                                className="flex-1 bg-brand-blue text-white px-4 py-3 rounded-md hover:bg-brand-blue-dark font-medium"
+                            >
+                                Actualizar todo
+                                <span className="block text-xs font-normal opacity-80">
+                                    Nuevos + Actualizar existentes
+                                </span>
+                            </button>
+                            <button
+                                onClick={() => handleDuplicateChoice('new-only')}
+                                className="flex-1 bg-green-600 text-white px-4 py-3 rounded-md hover:bg-green-700 font-medium"
+                            >
+                                Solo agregar nuevos
+                                <span className="block text-xs font-normal opacity-80">
+                                    Omitir {duplicatesFound.length} duplicado(s)
+                                </span>
+                            </button>
+                        </div>
+
+                        <button
+                            onClick={() => handleDuplicateChoice('cancel')}
+                            className="w-full mt-3 bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200 px-4 py-2 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500"
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {isEditModalOpen && editingEquipment && (
                 <EditEquipmentModal equipment={editingEquipment} onClose={() => setIsEditModalOpen(false)} onSave={async (updated) => {
                     updateEquipment(updated);

@@ -82,9 +82,61 @@ router.post('/', async (req, res) => {
     }
 });
 
+// POST /api/inventory/check-duplicates - Verificar duplicados antes de carga masiva
+router.post('/check-duplicates', async (req, res) => {
+    const { serialNumbers } = req.body;
+
+    if (!serialNumbers || !Array.isArray(serialNumbers)) {
+        return res.status(400).json({ success: false, message: 'Se espera un array de números de serie.' });
+    }
+
+    try {
+        // Filter out empty serial numbers
+        const validSerialNumbers = serialNumbers.filter(sn => sn && sn.trim() !== '');
+
+        if (validSerialNumbers.length === 0) {
+            return res.json({ success: true, duplicates: [], existingEquipment: [] });
+        }
+
+        // Query database for existing serial numbers
+        const placeholders = validSerialNumbers.map(() => '?').join(',');
+        const query = `SELECT serial_number, name, brand, model FROM equipment WHERE serial_number IN (${placeholders})`;
+
+        const [rows] = await db.query(query, validSerialNumbers);
+
+        const existingEquipment = rows.map(row => ({
+            serialNumber: row.serial_number,
+            name: row.name,
+            brand: row.brand,
+            model: row.model
+        }));
+
+        const duplicateSerialNumbers = existingEquipment.map(eq => eq.serialNumber);
+        const newSerialNumbers = validSerialNumbers.filter(sn => !duplicateSerialNumbers.includes(sn));
+
+        res.json({
+            success: true,
+            duplicates: duplicateSerialNumbers,
+            newItems: newSerialNumbers,
+            existingEquipment: existingEquipment,
+            summary: {
+                total: validSerialNumbers.length,
+                duplicatesCount: duplicateSerialNumbers.length,
+                newCount: newSerialNumbers.length
+            }
+        });
+    } catch (error) {
+        console.error('Error checking duplicates:', error);
+        res.status(500).json({ success: false, message: 'Error al verificar duplicados.' });
+    }
+});
+
 // POST /api/inventory/bulk-upload - Carga masiva robusta
 router.post('/bulk-upload', async (req, res) => {
-    const { items } = req.body;
+    const { items, mode = 'all', skipSerialNumbers = [] } = req.body;
+    // mode: 'all' = insert new + update existing (default)
+    // mode: 'new-only' = only insert new, skip duplicates
+    // skipSerialNumbers: array of serial numbers to skip (used with 'new-only' mode)
 
     if (!items || !Array.isArray(items)) {
         return res.status(400).json({ success: false, message: 'Datos inválidos. Se espera un array de items.' });
@@ -93,10 +145,13 @@ router.post('/bulk-upload', async (req, res) => {
     const connection = await db.getConnection();
     const results = {
         total: items.length,
-        success: 0,
+        inserted: 0,
+        updated: 0,
+        skipped: 0,
         failed: 0,
         warnings: [],
-        errors: []
+        errors: [],
+        skippedItems: []
     };
 
     // Helper para sanitizar fechas
@@ -128,26 +183,47 @@ router.post('/bulk-upload', async (req, res) => {
                 nextMaintenanceDate: sanitizeDate(item.nextMaintenanceDate)
             };
 
+            // Check if we should skip this item (new-only mode)
+            if (mode === 'new-only' && skipSerialNumbers.includes(sanitizedItem.serialNumber)) {
+                results.skipped++;
+                results.skippedItems.push({
+                    serialNumber: sanitizedItem.serialNumber,
+                    name: sanitizedItem.name
+                });
+                continue;
+            }
+
             // Registrar advertencias si se modificaron datos críticos
             if (!item.name) results.warnings.push(`Fila ${rowIndex}: Se asignó nombre genérico.`);
             if (item.lastMaintenanceDate && !sanitizedItem.lastMaintenanceDate) results.warnings.push(`Fila ${rowIndex}: Fecha de mant. inválida ignorada.`);
 
             try {
-                const query = `
-                    INSERT INTO equipment 
-                    (name, brand, model, serial_number, location, status, last_maintenance_date, next_maintenance_date)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE
-                    name = VALUES(name),
-                    brand = VALUES(brand),
-                    model = VALUES(model),
-                    location = VALUES(location),
-                    status = VALUES(status),
-                    last_maintenance_date = VALUES(last_maintenance_date),
-                    next_maintenance_date = VALUES(next_maintenance_date)
-                `;
+                let query;
+                if (mode === 'new-only') {
+                    // Insert only, will fail if duplicate (which is fine, we already filtered)
+                    query = `
+                        INSERT INTO equipment 
+                        (name, brand, model, serial_number, location, status, last_maintenance_date, next_maintenance_date)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    `;
+                } else {
+                    // Insert or update
+                    query = `
+                        INSERT INTO equipment 
+                        (name, brand, model, serial_number, location, status, last_maintenance_date, next_maintenance_date)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        ON DUPLICATE KEY UPDATE
+                        name = VALUES(name),
+                        brand = VALUES(brand),
+                        model = VALUES(model),
+                        location = VALUES(location),
+                        status = VALUES(status),
+                        last_maintenance_date = VALUES(last_maintenance_date),
+                        next_maintenance_date = VALUES(next_maintenance_date)
+                    `;
+                }
 
-                await connection.execute(query, [
+                const [result] = await connection.execute(query, [
                     sanitizedItem.name,
                     sanitizedItem.brand,
                     sanitizedItem.model,
@@ -158,7 +234,12 @@ router.post('/bulk-upload', async (req, res) => {
                     sanitizedItem.nextMaintenanceDate
                 ]);
 
-                results.success++;
+                // affectedRows: 1 = inserted, 2 = updated (MySQL behavior with ON DUPLICATE KEY UPDATE)
+                if (result.affectedRows === 1) {
+                    results.inserted++;
+                } else if (result.affectedRows === 2) {
+                    results.updated++;
+                }
 
             } catch (innerError) {
                 // Si falla la inserción individual (ej. error de conexión momentáneo o constraint muy estricto no previsto)
@@ -168,9 +249,17 @@ router.post('/bulk-upload', async (req, res) => {
             }
         }
 
+        // Build detailed message
+        let message = '';
+        if (results.inserted > 0) message += `${results.inserted} nuevo(s) agregado(s). `;
+        if (results.updated > 0) message += `${results.updated} existente(s) actualizado(s). `;
+        if (results.skipped > 0) message += `${results.skipped} duplicado(s) omitido(s). `;
+        if (results.failed > 0) message += `${results.failed} fallido(s).`;
+        if (!message) message = 'No se procesaron equipos.';
+
         res.json({
             success: true,
-            message: `Proceso completado. ${results.success} equipos procesados.`,
+            message: message.trim(),
             details: results
         });
 
