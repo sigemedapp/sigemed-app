@@ -217,13 +217,15 @@ const EquipmentDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     // FIX: Replaced useAuth, useInventory, and useAuditLog with useApp to resolve module errors.
-    const { user, equipment: allEquipment, workOrders, updateEquipment, addWorkOrder, addLogEntry, isLoading } = useApp();
+    const { user, equipment: allEquipment, workOrders, updateEquipment, addWorkOrder, addLogEntry, deleteEquipment, isLoading } = useApp();
 
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [reportSuccess, setReportSuccess] = useState(false);
     const [isAddDocModalOpen, setIsAddDocModalOpen] = useState(false);
     const [deletingDocument, setDeletingDocument] = useState<EquipmentDocument | null>(null);
+    const [isDeleteEquipmentModalOpen, setIsDeleteEquipmentModalOpen] = useState(false);
+    const [deleteMessage, setDeleteMessage] = useState('');
 
     const equipment = useMemo(() => allEquipment.find(e => String(e.id) === id), [allEquipment, id]);
 
@@ -310,6 +312,31 @@ const EquipmentDetailPage: React.FC = () => {
         setDeletingDocument(null);
     };
 
+    // Handle marking equipment as decommissioned (Fuera de Servicio)
+    const handleDecommission = async () => {
+        if (!equipment) return;
+        const success = await updateEquipment({ ...equipment, status: EquipmentStatus.OUT_OF_SERVICE });
+        if (success) {
+            addLogEntry('Dio de Baja Equipo', `Equipo: ${equipment.name} (N/S: ${equipment.serialNumber}) marcado como Fuera de Servicio`);
+            setDeleteMessage('Equipo marcado como Fuera de Servicio.');
+            setTimeout(() => setDeleteMessage(''), 3000);
+        }
+    };
+
+    // Handle permanent deletion of equipment
+    const handleDeleteEquipment = async () => {
+        if (!equipment) return;
+        const result = await deleteEquipment(equipment.id);
+        if (result.success) {
+            addLogEntry('Eliminó Equipo Permanentemente', `Equipo: ${equipment.name} (N/S: ${equipment.serialNumber})`);
+            navigate('/inventory');
+        } else {
+            setDeleteMessage(`Error: ${result.message}`);
+            setTimeout(() => setDeleteMessage(''), 5000);
+        }
+        setIsDeleteEquipmentModalOpen(false);
+    };
+
     if (isLoading) {
         return (
             <div className="flex justify-center items-center h-64">
@@ -336,8 +363,51 @@ const EquipmentDetailPage: React.FC = () => {
                     ¡Reporte enviado con éxito!
                 </div>
             )}
+            {deleteMessage && (
+                <div className={`fixed top-5 right-5 py-2 px-4 rounded-lg shadow-lg z-50 ${deleteMessage.includes('Error') ? 'bg-red-500' : 'bg-green-500'} text-white`}>
+                    {deleteMessage}
+                </div>
+            )}
             {isAddDocModalOpen && <AddDocumentModal onClose={() => setIsAddDocModalOpen(false)} onSave={handleAddDocument} />}
             {deletingDocument && <DeleteConfirmationModal itemName={deletingDocument.name} onClose={() => setDeletingDocument(null)} onConfirm={handleDeleteDocument} />}
+
+            {/* Delete Equipment Confirmation Modal */}
+            {isDeleteEquipmentModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-xl w-full max-w-md">
+                        <div className="flex items-center mb-4">
+                            <svg className="h-8 w-8 text-red-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Eliminar Equipo Permanentemente</h2>
+                        </div>
+                        <p className="text-gray-600 dark:text-gray-300 mb-2">
+                            ¿Está seguro de que desea eliminar permanentemente este equipo?
+                        </p>
+                        <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-md p-3 mb-4">
+                            <p className="font-semibold text-red-800 dark:text-red-200">{equipment.name}</p>
+                            <p className="text-sm text-red-600 dark:text-red-300">N/S: {equipment.serialNumber}</p>
+                        </div>
+                        <p className="text-red-600 dark:text-red-400 text-sm font-medium mb-6">
+                            ⚠️ Esta acción no se puede deshacer. Se perderá todo el historial del equipo.
+                        </p>
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setIsDeleteEquipmentModalOpen(false)}
+                                className="bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-200 px-4 py-2 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleDeleteEquipment}
+                                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
+                            >
+                                Sí, eliminar permanentemente
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <button onClick={() => navigate(-1)} className="mb-6 text-sm text-gray-600 hover:text-gray-900 flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
@@ -375,10 +445,22 @@ const EquipmentDetailPage: React.FC = () => {
                                 <h1 className="block mt-1 text-3xl leading-tight font-bold text-black flex items-center gap-2">
                                     {equipment.name}
                                     {user && [Role.SUPER_ADMIN, Role.SYSTEM_ADMIN].includes(user.role) && (
-                                        <button onClick={() => setIsEditModalOpen(true)} className="ml-3 text-sm flex items-center gap-1 text-gray-500 hover:text-blue-600 transition-colors bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-full" title="Editar Equipo">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                            Editar
-                                        </button>
+                                        <div className="flex items-center gap-2 ml-3">
+                                            <button onClick={() => setIsEditModalOpen(true)} className="text-sm flex items-center gap-1 text-gray-500 hover:text-blue-600 transition-colors bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-full" title="Editar Equipo">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                                Editar
+                                            </button>
+                                            {equipment.status !== EquipmentStatus.OUT_OF_SERVICE && (
+                                                <button onClick={handleDecommission} className="text-sm flex items-center gap-1 text-orange-600 hover:text-orange-800 transition-colors bg-orange-50 hover:bg-orange-100 px-3 py-1 rounded-full" title="Dar de Baja">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                                    Dar de Baja
+                                                </button>
+                                            )}
+                                            <button onClick={() => setIsDeleteEquipmentModalOpen(true)} className="text-sm flex items-center gap-1 text-red-600 hover:text-red-800 transition-colors bg-red-50 hover:bg-red-100 px-3 py-1 rounded-full" title="Eliminar Permanentemente">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                Eliminar
+                                            </button>
+                                        </div>
                                     )}
                                 </h1>
                                 <p className="mt-2 text-gray-500">{equipment.model} / NS: {equipment.serialNumber}</p>

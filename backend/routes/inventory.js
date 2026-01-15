@@ -310,4 +310,42 @@ router.put('/:id', async (req, res) => {
     }
 });
 
+// DELETE /api/inventory/:id - Eliminar equipo permanentemente
+router.delete('/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        // First check if equipment exists
+        const [existing] = await db.execute('SELECT id, name, serial_number FROM equipment WHERE id = ?', [id]);
+
+        if (existing.length === 0) {
+            return res.status(404).json({ success: false, message: 'Equipo no encontrado.' });
+        }
+
+        const equipmentInfo = existing[0];
+
+        // Delete the equipment
+        const [result] = await db.execute('DELETE FROM equipment WHERE id = ?', [id]);
+
+        if (result.affectedRows === 0) {
+            return res.status(500).json({ success: false, message: 'No se pudo eliminar el equipo.' });
+        }
+
+        console.log(`Equipment deleted: ID=${id}, Name=${equipmentInfo.name}, SN=${equipmentInfo.serial_number}`);
+
+        res.json({
+            success: true,
+            message: `Equipo "${equipmentInfo.name}" eliminado correctamente.`,
+            deletedEquipment: {
+                id: equipmentInfo.id,
+                name: equipmentInfo.name,
+                serialNumber: equipmentInfo.serial_number
+            }
+        });
+    } catch (error) {
+        console.error('Error deleting equipment:', error);
+        res.status(500).json({ success: false, message: 'Error al eliminar el equipo.' });
+    }
+});
+
 export default router;

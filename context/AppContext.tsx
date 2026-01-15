@@ -39,6 +39,7 @@ interface AppContextType {
     updateSupplier: (updatedSupplier: Supplier) => void;
     deleteSupplier: (supplierId: string) => void;
     addEquipment: (newEquipment: Omit<Equipment, 'id'>) => Promise<boolean>;
+    deleteEquipment: (equipmentId: string) => Promise<{ success: boolean; message: string }>;
     theme: 'light' | 'dark';
     toggleTheme: () => void;
     isSidebarOpen: boolean;
@@ -218,6 +219,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
     }, [baseUrl, refreshInventory]);
 
+    const deleteEquipment = useCallback(async (equipmentId: string): Promise<{ success: boolean; message: string }> => {
+        try {
+            const url = `${baseUrl}/api/inventory/${equipmentId}`;
+            const response = await fetch(url, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Remove from local state
+                setEquipment(prev => prev.filter(eq => eq.id !== equipmentId));
+                return { success: true, message: data.message || 'Equipo eliminado correctamente.' };
+            }
+
+            return { success: false, message: data.message || 'Error al eliminar el equipo.' };
+        } catch (error) {
+            console.error("Error deleting equipment:", error);
+            return { success: false, message: 'Error de conexión con el servidor.' };
+        }
+    }, [baseUrl]);
+
     const updateWorkOrder = useCallback((updatedWorkOrder: WorkOrder) => {
         setWorkOrders(prev => prev.map(wo => (wo.id === updatedWorkOrder.id ? updatedWorkOrder : wo)));
     }, []);
@@ -275,7 +299,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     return (
         <AppContext.Provider value={{
-            user, login, logout, equipment, refreshInventory, workOrders, suppliers, updateEquipment, updateWorkOrder, addWorkOrder, addSupplier, updateSupplier, deleteSupplier, addEquipment,
+            user, login, logout, equipment, refreshInventory, workOrders, suppliers, updateEquipment, updateWorkOrder, addWorkOrder, addSupplier, updateSupplier, deleteSupplier, addEquipment, deleteEquipment,
             theme, toggleTheme, isSidebarOpen, toggleSidebar, closeSidebar, isSearchOpen, openSearch, closeSearch,
             notifications, unreadCount, markAsRead, markAllAsRead, isPanelOpen, togglePanel, emails: userEmails, sendEmail, markEmailAsRead, unreadEmailCount, logEntries, addLogEntry,
             isLoading
