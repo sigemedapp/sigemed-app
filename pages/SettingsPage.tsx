@@ -270,35 +270,107 @@ const SettingsPage: React.FC = () => {
 
             // Debug check
             if (uploadUrl.includes('undefined')) {
-                throw new Error(`La URL del backend no es válida. (Actual: ${uploadUrl})`);
+                setMessage('Error: La URL del backend no es válida.');
+                setUploading(false);
+                return;
             }
 
             try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
                 const response = await fetch(uploadUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ items })
+                    body: JSON.stringify({ items }),
+                    signal: controller.signal
                 });
 
-                const data = await response.json();
-                if (response.ok) {
-                    setMessage(`¡Éxito! ${data.message}`);
-                    addLogEntry('Carga Masiva de Inventario', `Archivo: ${file.name}`);
+                clearTimeout(timeoutId);
+
+                // Check if response is HTML (error page) instead of JSON
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('text/html')) {
+                    console.error('Server returned HTML instead of JSON. Status:', response.status);
+                    setMessage(`Error del servidor: El servidor devolvió una página de error (${response.status}). Intente con menos registros o verifique la conexión.`);
+                    return;
+                }
+
+                // Try to parse JSON
+                let data;
+                try {
+                    data = await response.json();
+                } catch (parseError) {
+                    console.error('Failed to parse response as JSON:', parseError);
+                    setMessage('Error: El servidor no devolvió una respuesta válida. Esto puede deberse a un timeout o error interno.');
+                    return;
+                }
+
+                if (response.ok && data.success) {
+                    // Build detailed success message
+                    let successMsg = `¡Éxito! ${data.message}`;
+
+                    if (data.details) {
+                        const { success: processed, failed, warnings, errors } = data.details;
+
+                        if (failed > 0) {
+                            successMsg += `\n⚠️ ${failed} registro(s) fallaron.`;
+                        }
+
+                        if (warnings && warnings.length > 0) {
+                            console.log('Warnings:', warnings);
+                        }
+
+                        if (errors && errors.length > 0) {
+                            console.error('Errors:', errors);
+                            successMsg += '\nRevise la consola para ver detalles de errores.';
+                        }
+                    }
+
+                    setMessage(successMsg);
+                    addLogEntry('Carga Masiva de Inventario', `Archivo: ${file.name}, Items: ${items.length}`);
                     await refreshInventory();
                     setFile(null);
+
+                    // Reset file input
+                    const fileInput = document.getElementById('bulk-file') as HTMLInputElement;
+                    if (fileInput) fileInput.value = '';
                 } else {
-                    setMessage(`Error del servidor: ${data.message || 'Error desconocido'}`);
+                    // Server returned an error response
+                    let errorMsg = data.message || 'Error desconocido del servidor';
+
+                    if (data.details && data.details.errors) {
+                        const sampleErrors = data.details.errors.slice(0, 3);
+                        errorMsg += '\n' + sampleErrors.join('\n');
+                        if (data.details.errors.length > 3) {
+                            errorMsg += `\n... y ${data.details.errors.length - 3} más.`;
+                        }
+                    }
+
+                    setMessage(`Error: ${errorMsg}`);
                     console.error('Server error:', response.status, data);
                 }
             } catch (error) {
                 console.error('Upload error:', error);
-                setMessage(`Error al conectar con el servidor: ${error instanceof Error ? error.message : 'Error de red'}`);
+
+                if (error instanceof Error) {
+                    if (error.name === 'AbortError') {
+                        setMessage('Error: La operación tardó demasiado tiempo. Intente con un archivo más pequeño.');
+                    } else if (error.message.includes('Failed to fetch')) {
+                        setMessage('Error de conexión: No se pudo conectar con el servidor. Verifique su conexión a internet.');
+                    } else {
+                        setMessage(`Error: ${error.message}`);
+                    }
+                } else {
+                    setMessage('Error desconocido al conectar con el servidor.');
+                }
             } finally {
                 setUploading(false);
             }
         };
         reader.readAsText(file);
     };
+
 
     const handleDownload = () => {
         const headers = ["name", "brand", "model", "serialNumber", "location", "status", "lastMaintenanceDate", "nextMaintenanceDate"];
@@ -376,7 +448,7 @@ const SettingsPage: React.FC = () => {
                 >
                     {uploading ? 'Procesando...' : 'Cargar Inventario a Base de Datos'}
                 </button>
-                {message && <p className={`mt-4 text-center text-sm ${message.includes('Error') ? 'text-red-500' : 'text-green-600'}`}>{message}</p>}
+                {message && <p className={`mt-4 text-center text-sm whitespace-pre-line ${message.includes('Error') ? 'text-red-500' : 'text-green-600'}`}>{message}</p>}
             </div>
 
             <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md">
