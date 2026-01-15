@@ -39,16 +39,26 @@ const addWrappedText = (doc: jsPDF, text: string, x: number, y: number, maxWidth
 
 // Helper function to trigger download using Blob (more reliable than doc.save)
 const downloadPDF = (doc: jsPDF, filename: string): void => {
-    const pdfBlob = doc.output('blob');
-    const url = URL.createObjectURL(pdfBlob);
+    // Get PDF as blob with explicit MIME type
+    const pdfOutput = doc.output('blob');
+    const pdfBlob = new Blob([pdfOutput], { type: 'application/pdf' });
+
+    // Create download link
+    const url = window.URL.createObjectURL(pdfBlob);
     const link = document.createElement('a');
+    link.style.display = 'none';
     link.href = url;
-    link.download = filename;
+    link.setAttribute('download', filename);
+
+    // Append to body, click, and cleanup
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
-    // Clean up the URL after a short delay
-    setTimeout(() => URL.revokeObjectURL(url), 100);
+
+    // Cleanup after a delay
+    setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    }, 250);
 };
 
 // Generate "Cédula de Baja de Equipo Médico" (Standard)
