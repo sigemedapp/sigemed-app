@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { saveAs } from 'file-saver';
 
 export interface DecommissionData {
     // From equipment (auto-filled)
@@ -37,10 +38,12 @@ const addWrappedText = (doc: jsPDF, text: string, x: number, y: number, maxWidth
     return y + (lines.length * lineHeight);
 };
 
-// Helper function to download PDF - uses jsPDF native save which is most reliable
+// Helper function to download PDF using file-saver (most reliable method)
 const downloadPDF = (doc: jsPDF, filename: string): void => {
-    // Use jsPDF native save method - handles browser compatibility internally
-    doc.save(filename);
+    // Get PDF as blob
+    const pdfBlob = doc.output('blob');
+    // Save using file-saver
+    saveAs(pdfBlob, filename);
 };
 
 // Generate "Cédula de Baja de Equipo Médico" (Standard)
