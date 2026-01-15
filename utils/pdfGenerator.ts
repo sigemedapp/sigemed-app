@@ -37,8 +37,22 @@ const addWrappedText = (doc: jsPDF, text: string, x: number, y: number, maxWidth
     return y + (lines.length * lineHeight);
 };
 
+// Helper function to trigger download using Blob (more reliable than doc.save)
+const downloadPDF = (doc: jsPDF, filename: string): void => {
+    const pdfBlob = doc.output('blob');
+    const url = URL.createObjectURL(pdfBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    // Clean up the URL after a short delay
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+};
+
 // Generate "Cédula de Baja de Equipo Médico" (Standard)
-export const generateCedulaBajaStandard = (data: DecommissionData): void => {
+export const generateCedulaBajaStandard = (data: DecommissionData): jsPDF => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 20;
@@ -109,11 +123,11 @@ export const generateCedulaBajaStandard = (data: DecommissionData): void => {
     doc.text('BIOMÉDICA', margin, y + 10);
     doc.text('DIRECCIÓN MÉDICA', pageWidth - margin - 50, y + 5);
 
-    doc.save('Cedula_Baja_Equipo_Medico.pdf');
+    return doc;
 };
 
 // Generate "Cédula de Baja con Radiación Ionizante"
-export const generateCedulaRadiacion = (data: DecommissionData): void => {
+export const generateCedulaRadiacion = (data: DecommissionData): jsPDF => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 20;
@@ -191,11 +205,11 @@ export const generateCedulaRadiacion = (data: DecommissionData): void => {
     doc.text('BIOMÉDICA', margin, y + 8);
     doc.text('DIRECCIÓN MÉDICA', pageWidth - margin - 45, y + 4);
 
-    doc.save('Cedula_Baja_Radiacion_Ionizante.pdf');
+    return doc;
 };
 
 // Generate "Acta Administrativa"
-export const generateActaAdministrativa = (data: DecommissionData): void => {
+export const generateActaAdministrativa = (data: DecommissionData): jsPDF => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 25;
@@ -260,14 +274,47 @@ export const generateActaAdministrativa = (data: DecommissionData): void => {
     y += 5;
     doc.text('INGENIERÍA BIOMÉDICA', margin, y);
 
-    doc.save('Acta_Administrativa_Baja.pdf');
+    return doc;
 };
 
-// Generate all 3 PDFs
-export const generateAllDecommissionPDFs = (data: DecommissionData, includeRadiation: boolean = false): void => {
-    generateCedulaBajaStandard(data);
-    generateActaAdministrativa(data);
-    if (includeRadiation) {
-        generateCedulaRadiacion(data);
+// Generate all PDFs with staggered downloads to avoid browser blocking
+export const generateAllDecommissionPDFs = async (data: DecommissionData, includeRadiation: boolean = false): Promise<void> => {
+    // Generate all PDFs first
+    const doc1 = generateCedulaBajaStandard(data);
+    const doc2 = generateActaAdministrativa(data);
+    const doc3 = includeRadiation ? generateCedulaRadiacion(data) : null;
+
+    // Download with delays to avoid browser blocking multiple downloads
+    downloadPDF(doc1, 'Cedula_Baja_Equipo_Medico.pdf');
+
+    await new Promise(resolve => setTimeout(resolve, 500));
+    downloadPDF(doc2, 'Acta_Administrativa_Baja.pdf');
+
+    if (doc3) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        downloadPDF(doc3, 'Cedula_Baja_Radiacion_Ionizante.pdf');
     }
+};
+
+// Generate a single PDF for re-download (used in equipment details)
+export const regenerateSinglePDF = (data: DecommissionData, type: 'cedula' | 'acta' | 'radiacion'): void => {
+    let doc: jsPDF;
+    let filename: string;
+
+    switch (type) {
+        case 'cedula':
+            doc = generateCedulaBajaStandard(data);
+            filename = 'Cedula_Baja_Equipo_Medico.pdf';
+            break;
+        case 'acta':
+            doc = generateActaAdministrativa(data);
+            filename = 'Acta_Administrativa_Baja.pdf';
+            break;
+        case 'radiacion':
+            doc = generateCedulaRadiacion(data);
+            filename = 'Cedula_Baja_Radiacion_Ionizante.pdf';
+            break;
+    }
+
+    downloadPDF(doc, filename);
 };

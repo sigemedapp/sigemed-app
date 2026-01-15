@@ -4,7 +4,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MOCK_USERS } from '../constants';
 import { Equipment, EquipmentStatus, WorkOrderType, WorkOrderStatus, EquipmentDocument, DocumentType, Role } from '../components/layout/types';
 import { useApp } from '../context/AppContext';
-import DecommissionModal from '../components/DecommissionModal';
+import DecommissionModal, { DecommissionFormData } from '../components/DecommissionModal';
+import { DecommissionData, regenerateSinglePDF } from '../utils/pdfGenerator';
 
 const EquipmentStatusBadge: React.FC<{ status: EquipmentStatus }> = ({ status }) => {
     const baseClasses = "px-2 inline-flex text-xs leading-5 font-semibold rounded-full";
@@ -228,6 +229,7 @@ const EquipmentDetailPage: React.FC = () => {
     const [isDeleteEquipmentModalOpen, setIsDeleteEquipmentModalOpen] = useState(false);
     const [deleteMessage, setDeleteMessage] = useState('');
     const [isDecommissionModalOpen, setIsDecommissionModalOpen] = useState(false);
+    const [decommissionData, setDecommissionData] = useState<DecommissionFormData | null>(null);
 
     const equipment = useMemo(() => allEquipment.find(e => String(e.id) === id), [allEquipment, id]);
 
@@ -315,13 +317,16 @@ const EquipmentDetailPage: React.FC = () => {
     };
 
     // Handle marking equipment as decommissioned (Fuera de Servicio) - called from DecommissionModal
-    const handleDecommissionConfirm = async () => {
+    const handleDecommissionConfirm = async (formData: DecommissionFormData) => {
         if (!equipment) return;
+        // Store the form data for potential re-generation of PDFs
+        setDecommissionData(formData);
+
         const success = await updateEquipment({ ...equipment, status: EquipmentStatus.OUT_OF_SERVICE });
         if (success) {
-            addLogEntry('Dio de Baja Equipo con PDFs', `Equipo: ${equipment.name} (N/S: ${equipment.serialNumber}) - Se generaron formatos de baja`);
-            setDeleteMessage('¡PDFs generados! Equipo marcado como Fuera de Servicio.');
-            setTimeout(() => setDeleteMessage(''), 4000);
+            addLogEntry('Dio de Baja Equipo con PDFs', `Equipo: ${equipment.name} (N/S: ${equipment.serialNumber}) - Se generaron formatos de baja. Justificación: ${formData.justificacion}`);
+            setDeleteMessage('¡PDFs generados y descargados! Equipo marcado como Fuera de Servicio.');
+            setTimeout(() => setDeleteMessage(''), 5000);
         }
         setIsDecommissionModalOpen(false);
     };
@@ -510,6 +515,102 @@ const EquipmentDetailPage: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Decommission Documents Section - Only show for decommissioned equipment */}
+            {equipment.status === EquipmentStatus.OUT_OF_SERVICE && (
+                <div className="mt-8 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 shadow-md rounded-lg p-6">
+                    <div className="flex items-center mb-4">
+                        <svg className="h-6 w-6 text-orange-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <h2 className="text-xl font-semibold text-orange-800 dark:text-orange-200">Formatos de Baja</h2>
+                    </div>
+                    <p className="text-sm text-orange-700 dark:text-orange-300 mb-4">
+                        Este equipo ha sido dado de baja. Puede volver a descargar los formatos oficiales haciendo clic en los botones a continuación.
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                        <button
+                            onClick={() => {
+                                const pdfData: DecommissionData = {
+                                    nombreDescripcion: `${equipment.name} - ${equipment.model}`,
+                                    marca: equipment.brand,
+                                    modelo: equipment.model,
+                                    noSerie: equipment.serialNumber,
+                                    ubicacion: equipment.location,
+                                    noInventario: decommissionData?.noInventario || '',
+                                    accesorios: decommissionData?.accesorios || '',
+                                    fechaAlta: decommissionData?.fechaAlta || '',
+                                    fechaBaja: decommissionData?.fechaBaja || new Date().toISOString().split('T')[0],
+                                    justificacion: decommissionData?.justificacion || 'Equipo dado de baja del sistema'
+                                };
+                                regenerateSinglePDF(pdfData, 'cedula');
+                            }}
+                            className="flex items-center gap-2 bg-white dark:bg-slate-700 border border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-300 px-4 py-2 rounded-md hover:bg-orange-100 dark:hover:bg-orange-900/40"
+                        >
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Cédula de Baja
+                        </button>
+                        <button
+                            onClick={() => {
+                                const pdfData: DecommissionData = {
+                                    nombreDescripcion: `${equipment.name} - ${equipment.model}`,
+                                    marca: equipment.brand,
+                                    modelo: equipment.model,
+                                    noSerie: equipment.serialNumber,
+                                    ubicacion: equipment.location,
+                                    noInventario: decommissionData?.noInventario || '',
+                                    accesorios: decommissionData?.accesorios || '',
+                                    fechaAlta: decommissionData?.fechaAlta || '',
+                                    fechaBaja: decommissionData?.fechaBaja || new Date().toISOString().split('T')[0],
+                                    justificacion: decommissionData?.justificacion || 'Equipo dado de baja del sistema',
+                                    localidad: decommissionData?.localidad || 'Ciudad de México',
+                                    delegacionMunicipio: decommissionData?.delegacionMunicipio || '',
+                                    encargadoDepto: decommissionData?.encargadoDepto || ''
+                                };
+                                regenerateSinglePDF(pdfData, 'acta');
+                            }}
+                            className="flex items-center gap-2 bg-white dark:bg-slate-700 border border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-300 px-4 py-2 rounded-md hover:bg-orange-100 dark:hover:bg-orange-900/40"
+                        >
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Acta Administrativa
+                        </button>
+                        {decommissionData?.includeRadiation && (
+                            <button
+                                onClick={() => {
+                                    const pdfData: DecommissionData = {
+                                        nombreDescripcion: `${equipment.name} - ${equipment.model}`,
+                                        marca: equipment.brand,
+                                        modelo: equipment.model,
+                                        noSerie: equipment.serialNumber,
+                                        ubicacion: equipment.location,
+                                        noInventario: decommissionData?.noInventario || '',
+                                        accesorios: decommissionData?.accesorios || '',
+                                        fechaAlta: decommissionData?.fechaAlta || '',
+                                        fechaBaja: decommissionData?.fechaBaja || new Date().toISOString().split('T')[0],
+                                        justificacion: decommissionData?.justificacion || '',
+                                        numeroLicencia: decommissionData?.numeroLicencia,
+                                        fechaLicencia: decommissionData?.fechaLicencia,
+                                        responsableSeguridad: decommissionData?.responsableSeguridad,
+                                        destinoFinal: decommissionData?.destinoFinal,
+                                        contenedorTraslado: decommissionData?.contenedorTraslado
+                                    };
+                                    regenerateSinglePDF(pdfData, 'radiacion');
+                                }}
+                                className="flex items-center gap-2 bg-yellow-100 dark:bg-yellow-900/40 border border-yellow-400 dark:border-yellow-700 text-yellow-800 dark:text-yellow-300 px-4 py-2 rounded-md hover:bg-yellow-200 dark:hover:bg-yellow-900/60"
+                            >
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Cédula Radiación Ionizante
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
 
             <div className="mt-8 bg-white shadow-md rounded-lg p-6">
                 <div className="flex justify-between items-center mb-4">

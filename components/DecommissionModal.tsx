@@ -2,10 +2,27 @@ import React, { useState } from 'react';
 import { Equipment } from './layout/types';
 import { DecommissionData, generateAllDecommissionPDFs } from '../utils/pdfGenerator';
 
+export interface DecommissionFormData {
+    noInventario: string;
+    accesorios: string;
+    fechaAlta: string;
+    fechaBaja: string;
+    justificacion: string;
+    includeRadiation: boolean;
+    numeroLicencia?: string;
+    fechaLicencia?: string;
+    responsableSeguridad?: string;
+    destinoFinal?: string;
+    contenedorTraslado?: string;
+    localidad?: string;
+    delegacionMunicipio?: string;
+    encargadoDepto?: string;
+}
+
 interface DecommissionModalProps {
     equipment: Equipment;
     onClose: () => void;
-    onConfirm: () => void;
+    onConfirm: (formData: DecommissionFormData) => void;
 }
 
 const DecommissionModal: React.FC<DecommissionModalProps> = ({ equipment, onClose, onConfirm }) => {
@@ -74,14 +91,14 @@ const DecommissionModal: React.FC<DecommissionModalProps> = ({ equipment, onClos
                 encargadoDepto: formData.encargadoDepto
             };
 
-            // Generate PDFs with a small delay between each to allow downloads
-            generateAllDecommissionPDFs(pdfData, formData.includeRadiation);
+            // Generate PDFs with staggered downloads
+            await generateAllDecommissionPDFs(pdfData, formData.includeRadiation);
 
-            // Wait a moment for downloads to initiate
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
-            // Confirm decommission (update equipment status)
-            onConfirm();
+            // Confirm decommission with form data (for storage/regeneration)
+            onConfirm({
+                ...formData,
+                fechaBaja: today
+            });
         } catch (error) {
             console.error('Error generating PDFs:', error);
             alert('Error al generar los PDFs');
