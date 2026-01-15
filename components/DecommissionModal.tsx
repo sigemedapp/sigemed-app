@@ -42,8 +42,8 @@ const DecommissionModal: React.FC<DecommissionModalProps> = ({ equipment, onClos
         destinoFinal: '',
         contenedorTraslado: '',
         // Administrative fields
-        localidad: 'Ciudad de México',
-        delegacionMunicipio: 'Cuauhtémoc',
+        localidad: 'Estado de México',
+        delegacionMunicipio: 'Ixtapaluca',
         encargadoDepto: '',
         unidad: 'Hospital de Traumatología y Especialidades Médicas Polanco'
     });

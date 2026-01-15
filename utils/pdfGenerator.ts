@@ -179,11 +179,14 @@ export const generateCedulaRadiacion = (data: DecommissionData): jsPDF => {
     y += rowHeight;
 
     // Licencia | Responsable Seguridad
-    drawCell(margin, y, halfWidth, rowHeight + 5, 'NÚMERO Y FECHA DE LA LICENCIA',
+    drawCell(margin, y, halfWidth, rowHeight + 10, 'NÚMERO Y FECHA DE LA LICENCIA',
         `${data.numeroLicencia || ''} - ${data.fechaLicencia || ''}`);
-    drawCell(margin + halfWidth, y, halfWidth, rowHeight + 5, 'NOMBRE DEL RESPONSABLE DE SEGURIDAD RADIOLÓGICA',
+
+    // Split long title for header
+    const respTitle = doc.splitTextToSize('NOMBRE DEL RESPONSABLE DE SEGURIDAD RADIOLÓGICA', halfWidth - 4);
+    drawCell(margin + halfWidth, y, halfWidth, rowHeight + 10, respTitle,
         data.responsableSeguridad || '');
-    y += rowHeight + 5;
+    y += rowHeight + 10;
 
     // Fecha Alta | Fecha Baja
     drawCell(margin, y, halfWidth, rowHeight, 'FECHA DE ALTA', data.fechaAlta);
@@ -191,10 +194,13 @@ export const generateCedulaRadiacion = (data: DecommissionData): jsPDF => {
     y += rowHeight;
 
     // Destino Final | Contenedor
-    drawCell(margin, y, halfWidth, rowHeight + 5, 'DESTINO FINAL PROPUESTO', data.destinoFinal || '');
-    drawCell(margin + halfWidth, y, halfWidth, rowHeight + 5, 'TIPO, MARCA, MODELO DEL CONTENEDOR PARA TRASLADO',
+    drawCell(margin, y, halfWidth, rowHeight + 10, 'DESTINO FINAL PROPUESTO', data.destinoFinal || '');
+
+    // Split long title for header
+    const contTitle = doc.splitTextToSize('TIPO, MARCA, MODELO DEL CONTENEDOR PARA TRASLADO', halfWidth - 4);
+    drawCell(margin + halfWidth, y, halfWidth, rowHeight + 10, contTitle,
         data.contenedorTraslado || '');
-    y += rowHeight + 5;
+    y += rowHeight + 10;
 
     // Justificación y Evidencia
     const justifHeight = 50;
