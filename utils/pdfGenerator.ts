@@ -1,5 +1,4 @@
 import { jsPDF } from 'jspdf';
-import { saveAs } from 'file-saver';
 
 export interface DecommissionData {
     // From equipment (auto-filled)
@@ -38,12 +37,27 @@ const addWrappedText = (doc: jsPDF, text: string, x: number, y: number, maxWidth
     return y + (lines.length * lineHeight);
 };
 
-// Helper function to download PDF using file-saver (most reliable method)
-const downloadPDF = (doc: jsPDF, filename: string): void => {
+// Helper function to open PDF in new tab for printing
+const openPDFInNewTab = (doc: jsPDF, filename: string): void => {
     // Get PDF as blob
     const pdfBlob = doc.output('blob');
-    // Save using file-saver
-    saveAs(pdfBlob, filename);
+    const url = URL.createObjectURL(pdfBlob);
+
+    // Open in new tab
+    const newWindow = window.open(url, '_blank');
+
+    // If popup blocked or failed, fallback/alert could go here, 
+    // but usually user triggers this so it should work.
+    if (newWindow) {
+        // Optional: set title after load might not work due to cross-origin policies with blob, 
+        // but the file is viewable.
+        // We can't easily change the title of a blob URL tab programmatically in all browsers.
+    } else {
+        alert(`Por favor permita ventanas emergentes para ver el archivo: ${filename}`);
+    }
+
+    // Note: We can't revoke object URL immediately or the tab might lose content. 
+    // We rely on browser garbage collection for tab closure.
 };
 
 // Generate "Cédula de Baja de Equipo Médico" (Standard)
@@ -272,23 +286,16 @@ export const generateActaAdministrativa = (data: DecommissionData): jsPDF => {
     return doc;
 };
 
-// Generate all PDFs with staggered downloads to avoid browser blocking
+// Generate all PDFs - Opens the main one immediately, others should be opened manually via the details page
 export const generateAllDecommissionPDFs = async (data: DecommissionData, includeRadiation: boolean = false): Promise<void> => {
-    // Generate all PDFs first
+    // Generate main PDF
     const doc1 = generateCedulaBajaStandard(data);
-    const doc2 = generateActaAdministrativa(data);
-    const doc3 = includeRadiation ? generateCedulaRadiacion(data) : null;
 
-    // Download with delays to avoid browser blocking multiple downloads
-    downloadPDF(doc1, 'Cedula_Baja_Equipo_Medico.pdf');
+    // Open only the main one automatically to avoid popup blockers
+    openPDFInNewTab(doc1, 'Cedula_Baja_Equipo_Medico.pdf');
 
-    await new Promise(resolve => setTimeout(resolve, 500));
-    downloadPDF(doc2, 'Acta_Administrativa_Baja.pdf');
-
-    if (doc3) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        downloadPDF(doc3, 'Cedula_Baja_Radiacion_Ionizante.pdf');
-    }
+    // The others (Acta, Radiation) are available via the "Formatos de Baja" section buttons
+    // We don't verify them here to avoid multiple popups being blocked which confuses users
 };
 
 // Generate a single PDF for re-download (used in equipment details)
@@ -311,5 +318,5 @@ export const regenerateSinglePDF = (data: DecommissionData, type: 'cedula' | 'ac
             break;
     }
 
-    downloadPDF(doc, filename);
+    openPDFInNewTab(doc, filename);
 };
