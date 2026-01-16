@@ -2,10 +2,12 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MOCK_USERS } from '../constants';
-import { Equipment, EquipmentStatus, WorkOrderType, WorkOrderStatus, EquipmentDocument, DocumentType, Role } from '../components/layout/types';
+import { Equipment, EquipmentStatus, WorkOrderType, WorkOrderStatus, EquipmentDocument, DocumentType, Role, WorkOrder } from '../components/layout/types';
 import { useApp } from '../context/AppContext';
 import DecommissionModal, { DecommissionFormData } from '../components/DecommissionModal';
 import { DecommissionData, regenerateSinglePDF } from '../utils/pdfGenerator';
+import { SIGEMED_FULL_LOGO } from '../assets/sigemed_full_logo';
+import ServiceOrderForm from '../components/ServiceOrderForm';
 
 const EquipmentStatusBadge: React.FC<{ status: EquipmentStatus }> = ({ status }) => {
     const baseClasses = "px-2 inline-flex text-xs leading-5 font-semibold rounded-full";
@@ -13,6 +15,7 @@ const EquipmentStatusBadge: React.FC<{ status: EquipmentStatus }> = ({ status })
         [EquipmentStatus.OPERATIONAL]: "bg-green-100 text-green-800",
         [EquipmentStatus.IN_MAINTENANCE]: "bg-yellow-100 text-yellow-800",
         [EquipmentStatus.OUT_OF_SERVICE]: "bg-red-100 text-red-800",
+        [EquipmentStatus.FAILURE_REPORTED]: "bg-orange-100 text-orange-800",
     };
     return <span className={`${baseClasses} ${statusClasses[status]}`}>{status}</span>;
 };
@@ -96,36 +99,16 @@ const EditEquipmentModal: React.FC<{
     );
 };
 
-const ReportFailureModal: React.FC<{ equipmentName: string, onSubmit: (description: string) => void, onCancel: () => void }> = ({ equipmentName, onSubmit, onCancel }) => {
-    const [description, setDescription] = useState('');
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (description.trim()) {
-            onSubmit(description);
-        }
-    };
-
+// ReportFailureModal replaced by ServiceOrderForm
+const ReportFailureModalWrapper: React.FC<{ equipment: Equipment, onSubmit: (data: Partial<WorkOrder>) => void, onCancel: () => void }> = ({ equipment, onSubmit, onCancel }) => {
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
-            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
-                <h2 className="text-2xl font-bold mb-4">Reportar Falla para {equipmentName}</h2>
-                <form onSubmit={handleSubmit}>
-                    <p className="text-gray-600 mb-4">Por favor, describa el problema que está experimentando con el equipo de la manera más detallada posible.</p>
-                    <textarea
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        required
-                        rows={5}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-blue"
-                        placeholder="Ej: El equipo no enciende, muestra un código de error E-05, hace un ruido extraño..."
-                    />
-                    <div className="mt-6 flex justify-end space-x-3">
-                        <button type="button" onClick={onCancel} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">Cancelar</button>
-                        <button type="submit" className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700">Enviar Reporte</button>
-                    </div>
-                </form>
-            </div>
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4 overflow-y-auto">
+            <ServiceOrderForm
+                equipment={equipment}
+                mode="create"
+                onSubmit={onSubmit}
+                onCancel={onCancel}
+            />
         </div>
     );
 };
@@ -256,37 +239,33 @@ const EquipmentDetailPage: React.FC = () => {
     const relatedWorkOrders = useMemo(() => workOrders.filter(wo => wo.equipmentId === id).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [workOrders, id]);
     const activeWorkOrder = useMemo(() => workOrders.find(wo => wo.equipmentId === id && wo.status !== WorkOrderStatus.CLOSED), [workOrders, id]);
 
-    const handleReportSubmit = (description: string) => {
-        if (!user || !equipment) return;
-
-        const newWorkOrder = {
-            id: `wo-${Date.now()}`,
+    const handleReportSubmit = async (data: Partial<WorkOrder>) => {
+        if (!equipment) return;
+        const success = await addWorkOrder({
             equipmentId: equipment.id,
-            type: WorkOrderType.FAILURE,
-            description,
-            reportedBy: user.id,
-            assignedTo: undefined,
+            type: data.type || WorkOrderType.CORRECTIVE,
+            description: data.description || 'Reporte de Falla',
+            assignedTo: 'pending',
+            estimatedRepairDate: undefined,
+            partsNeeded: '',
             status: WorkOrderStatus.REPORTED,
-            createdAt: new Date().toISOString().split('T')[0],
-            history: [
-                { timestamp: new Date().toISOString(), userId: user.id, action: 'Reporte de falla creado.' },
-            ]
-        };
+            requesterName: data.requesterName,
+            requestingArea: data.requestingArea,
+            folio: data.folio,
+        });
 
-        addWorkOrder(newWorkOrder);
-        updateEquipment({ ...equipment, status: EquipmentStatus.OUT_OF_SERVICE });
-
-        addLogEntry('Reportó Falla de Equipo', `Equipo: ${equipment.name} (N/S: ${equipment.serialNumber}). OT Creada: ${newWorkOrder.id}`);
-
+        if (success) {
+            setReportSuccess(true);
+            setTimeout(() => setReportSuccess(false), 3000);
+            addLogEntry('Reportó Falla', `Equipo: ${equipment.name} (Folio: ${data.folio}) - ${data.description}`);
+        }
         setIsReportModalOpen(false);
-        setReportSuccess(true);
-        setTimeout(() => setReportSuccess(false), 4000);
     };
 
     const handleUpdate = async (updatedEquipment: Equipment) => {
         const success = await updateEquipment(updatedEquipment); // Calls API
         if (success) {
-            addLogEntry('Actualizó Información de Equipo', `Equipo: ${updatedEquipment.name} (ID: ${updatedEquipment.id})`);
+            addLogEntry('Actualizó Información de Equipo', `Equipo: ${updatedEquipment.name}(ID: ${updatedEquipment.id})`);
             setIsEditModalOpen(false);
         } else {
             alert('Error al actualizar el equipo');
@@ -296,7 +275,7 @@ const EquipmentDetailPage: React.FC = () => {
     const handleAddDocument = (name: string, type: DocumentType, file: File) => {
         if (!equipment) return;
         const newDocument: EquipmentDocument = {
-            id: `doc-${Date.now()}`,
+            id: `doc - ${Date.now()}`,
             name: name || file.name,
             type,
             fileUrl: '#', // In a real app, this would be a URL from a storage service
@@ -304,7 +283,7 @@ const EquipmentDetailPage: React.FC = () => {
         };
         const updatedDocuments = [...(equipment.documents || []), newDocument];
         updateEquipment({ ...equipment, documents: updatedDocuments });
-        addLogEntry('Agregó Documento a Equipo', `Equipo: ${equipment.name}. Documento: ${newDocument.name}`);
+        addLogEntry('Agregó Documento a Equipo', `Equipo: ${equipment.name}.Documento: ${newDocument.name}`);
         setIsAddDocModalOpen(false);
     };
 
@@ -312,7 +291,7 @@ const EquipmentDetailPage: React.FC = () => {
         if (!equipment || !deletingDocument) return;
         const updatedDocuments = (equipment.documents || []).filter(doc => doc.id !== deletingDocument.id);
         updateEquipment({ ...equipment, documents: updatedDocuments });
-        addLogEntry('Eliminó Documento de Equipo', `Equipo: ${equipment.name}. Documento: ${deletingDocument.name}`);
+        addLogEntry('Eliminó Documento de Equipo', `Equipo: ${equipment.name}.Documento: ${deletingDocument.name}`);
         setDeletingDocument(null);
     };
 
@@ -324,7 +303,7 @@ const EquipmentDetailPage: React.FC = () => {
 
         const success = await updateEquipment({ ...equipment, status: EquipmentStatus.OUT_OF_SERVICE });
         if (success) {
-            addLogEntry('Dio de Baja Equipo con PDFs', `Equipo: ${equipment.name} (N/S: ${equipment.serialNumber}) - Se generaron formatos de baja. Justificación: ${formData.justificacion}`);
+            addLogEntry('Dio de Baja Equipo con PDFs', `Equipo: ${equipment.name}(N / S: ${equipment.serialNumber}) - Se generaron formatos de baja.Justificación: ${formData.justificacion}`);
             setDeleteMessage('¡PDFs generados y descargados! Equipo marcado como Fuera de Servicio.');
             setTimeout(() => setDeleteMessage(''), 5000);
         }
@@ -336,7 +315,7 @@ const EquipmentDetailPage: React.FC = () => {
         if (!equipment) return;
         const result = await deleteEquipment(equipment.id);
         if (result.success) {
-            addLogEntry('Eliminó Equipo Permanentemente', `Equipo: ${equipment.name} (N/S: ${equipment.serialNumber})`);
+            addLogEntry('Eliminó Equipo Permanentemente', `Equipo: ${equipment.name}(N / S: ${equipment.serialNumber})`);
             navigate('/inventory');
         } else {
             setDeleteMessage(`Error: ${result.message}`);
@@ -364,7 +343,7 @@ const EquipmentDetailPage: React.FC = () => {
 
     return (
         <div>
-            {isReportModalOpen && <ReportFailureModal equipmentName={equipment.name} onSubmit={handleReportSubmit} onCancel={() => setIsReportModalOpen(false)} />}
+            {isReportModalOpen && equipment && <ReportFailureModalWrapper equipment={equipment} onSubmit={handleReportSubmit} onCancel={() => setIsReportModalOpen(false)} />}
             {isEditModalOpen && <EditEquipmentModal equipment={equipment} onClose={() => setIsEditModalOpen(false)} onSave={handleUpdate} />}
             {reportSuccess && (
                 <div className="fixed top-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg z-50 animate-fade-in-out">
@@ -372,7 +351,7 @@ const EquipmentDetailPage: React.FC = () => {
                 </div>
             )}
             {deleteMessage && (
-                <div className={`fixed top-5 right-5 py-2 px-4 rounded-lg shadow-lg z-50 ${deleteMessage.includes('Error') ? 'bg-red-500' : 'bg-green-500'} text-white`}>
+                <div className={`fixed top - 5 right - 5 py - 2 px - 4 rounded - lg shadow - lg z - 50 ${deleteMessage.includes('Error') ? 'bg-red-500' : 'bg-green-500'} text - white`}>
                     {deleteMessage}
                 </div>
             )}

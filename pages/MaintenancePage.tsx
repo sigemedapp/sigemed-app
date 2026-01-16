@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 // FIX: Corrected import paths for constants and types to be relative.
 import { MOCK_USERS } from '../constants';
 import { WorkOrder, WorkOrderStatus, WorkOrderType, Role, User, EquipmentStatus, Equipment } from '../components/layout/types';
+import ServiceOrderForm from '../components/ServiceOrderForm';
 
 const WorkOrderStatusBadge: React.FC<{ status: WorkOrderStatus }> = ({ status }) => {
     const baseClasses = "px-2 py-1 text-xs font-semibold leading-5 rounded-full";
@@ -25,7 +26,7 @@ const WorkOrderModal: React.FC<{
     // FIX: Replaced context hooks with useApp to resolve module errors.
     const { user, equipment: allEquipment, sendEmail, addLogEntry } = useApp();
     const equipment = allEquipment.find(e => e.id === workOrder.equipmentId);
-    
+
     // Local state for updates
     const [status, setStatus] = useState(workOrder.status);
     const [assignedTo, setAssignedTo] = useState(workOrder.assignedTo || '');
@@ -33,6 +34,7 @@ const WorkOrderModal: React.FC<{
     const [estimatedRepairDate, setEstimatedRepairDate] = useState(workOrder.estimatedRepairDate || '');
     const [newHistoryAction, setNewHistoryAction] = useState('');
     const [equipmentStatus, setEquipmentStatus] = useState(equipment?.status || EquipmentStatus.OPERATIONAL);
+    const [showOfficialFormat, setShowOfficialFormat] = useState(false);
 
     const technicians = MOCK_USERS.filter(u => u.role === Role.BIOMEDICAL_ENGINEER || u.role === Role.SYSTEM_ADMIN);
 
@@ -43,27 +45,33 @@ const WorkOrderModal: React.FC<{
 
     const handleAssignment = () => {
         if (!user || !assignedTo || !equipment) return;
-        
+
         const technicianName = getUserName(assignedTo);
         const updatedHistory = [
-           ...(workOrder.history || []),
-           { timestamp: new Date().toISOString(), userId: user.id, action: `Asignado a ${technicianName}.` },
-           { timestamp: new Date().toISOString(), userId: user.id, action: `Estado del equipo actualizado a '${EquipmentStatus.IN_MAINTENANCE}'.` }
+            ...(workOrder.history || []),
+            { timestamp: new Date().toISOString(), userId: user.id, action: `Asignado a ${technicianName}.` },
+            { timestamp: new Date().toISOString(), userId: user.id, action: `Estado del equipo actualizado a '${EquipmentStatus.IN_MAINTENANCE}'.` }
         ];
 
+        const assignedUser = MOCK_USERS.find(u => u.id === assignedTo);
         const updatedWorkOrder: WorkOrder = {
-           ...workOrder,
-           assignedTo,
-           status: WorkOrderStatus.OPEN,
-           history: updatedHistory
+            ...workOrder,
+            assignedTo,
+            status: WorkOrderStatus.OPEN,
+            history: updatedHistory,
+            serviceRealizedBy: assignedUser ? {
+                name: assignedUser.name,
+                position: assignedUser.role,
+                date: new Date().toISOString()
+            } : undefined
         };
         updateWorkOrder(updatedWorkOrder);
 
         const updatedEquipment: Equipment = { ...equipment, status: EquipmentStatus.IN_MAINTENANCE };
         updateEquipment(updatedEquipment);
-        
+
         addLogEntry('Asignó Orden de Trabajo', `OT: ${workOrder.id} a ${technicianName}`);
-        
+
         // Simulate sending an email
         sendEmail({
             to: assignedTo,
@@ -86,10 +94,10 @@ const WorkOrderModal: React.FC<{
 
         onClose();
     };
-    
+
     const handleUpdate = () => {
         if (!user || !equipment) return;
-        
+
         const updatedHistory = [...(workOrder.history || [])];
         const logDetails: string[] = [];
 
@@ -128,14 +136,14 @@ const WorkOrderModal: React.FC<{
         if (equipment.status !== finalEquipmentStatus) {
             updateEquipment({ ...equipment, status: finalEquipmentStatus });
         }
-        
+
         if (logDetails.length > 0) {
             addLogEntry('Actualizó Orden de Trabajo', `OT: ${workOrder.id}. Detalles: ${logDetails.join(' ')}`);
         }
-        
+
         onClose();
     };
-    
+
     const handleExportToCSV = () => {
         if (!workOrder || !equipment) return;
         addLogEntry('Exportó Detalles de OT (CSV)', `OT: ${workOrder.id}`);
@@ -157,7 +165,7 @@ const WorkOrderModal: React.FC<{
         ];
         csvContent += details.map(row => `"${row[0]}","${row[1]}"`).join('\n');
         csvContent += '\n\n';
-        
+
         // History
         csvContent += "Historial de la Orden\n";
         csvContent += "Fecha,Usuario,Acción\n";
@@ -171,7 +179,7 @@ const WorkOrderModal: React.FC<{
                 csvContent += row.join(',') + '\n';
             });
         }
-        
+
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
@@ -187,14 +195,14 @@ const WorkOrderModal: React.FC<{
             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-3xl max-h-full overflow-y-auto">
                 <div className="flex justify-between items-start">
                     <h2 className="text-2xl font-bold mb-4 text-gray-800">Detalle Orden de Trabajo - {workOrder.id}</h2>
-                     <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2">
                         <button onClick={handleExportToCSV} className="p-2 rounded-full text-gray-500 hover:bg-gray-100" title="Exportar a CSV">
-                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                         </button>
                         <button onClick={onClose} className="text-2xl font-bold text-gray-500 hover:text-gray-800">&times;</button>
                     </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 text-gray-900">
                     <div><p><strong>Equipo:</strong> {equipment?.name}</p></div>
                     <div><p><strong>Estado Actual:</strong> <WorkOrderStatusBadge status={workOrder.status} /></p></div>
@@ -218,18 +226,18 @@ const WorkOrderModal: React.FC<{
                         </div>
                     )}
                     {canUpdate && (
-                         <div className="space-y-4">
-                             <div>
-                                 <label className="block text-sm font-medium text-gray-700">Cambiar Estado de la Orden</label>
-                                 <select value={status} onChange={e => setStatus(e.target.value as WorkOrderStatus)} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md">
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Cambiar Estado de la Orden</label>
+                                <select value={status} onChange={e => setStatus(e.target.value as WorkOrderStatus)} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md">
                                     {Object.values(WorkOrderStatus).filter(s => s !== WorkOrderStatus.REPORTED).map(s => <option key={s} value={s}>{s}</option>)}
-                                 </select>
+                                </select>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Actualizar Estado del Equipo</label>
-                                <select 
-                                    value={equipmentStatus} 
-                                    onChange={e => setEquipmentStatus(e.target.value as EquipmentStatus)} 
+                                <select
+                                    value={equipmentStatus}
+                                    onChange={e => setEquipmentStatus(e.target.value as EquipmentStatus)}
                                     className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"
                                     disabled={status === WorkOrderStatus.CLOSED}
                                 >
@@ -239,21 +247,21 @@ const WorkOrderModal: React.FC<{
                                 {status === WorkOrderStatus.CLOSED && <p className="text-xs text-gray-500 mt-1">Al cerrar la orden, el equipo se marcará como '{EquipmentStatus.OPERATIONAL}'.</p>}
                             </div>
                             <div>
-                                 <label className="block text-sm font-medium text-gray-700">Refacciones Necesarias (Opcional)</label>
-                                 <input type="text" value={partsNeeded} onChange={e => setPartsNeeded(e.target.value)} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md" placeholder="Ej: Batería modelo X, Sensor SpO2"/>
+                                <label className="block text-sm font-medium text-gray-700">Refacciones Necesarias (Opcional)</label>
+                                <input type="text" value={partsNeeded} onChange={e => setPartsNeeded(e.target.value)} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md" placeholder="Ej: Batería modelo X, Sensor SpO2" />
                             </div>
-                             <div>
-                                 <label className="block text-sm font-medium text-gray-700">Fecha Estimada de Reparación (Opcional)</label>
-                                 <input type="date" value={estimatedRepairDate} onChange={e => setEstimatedRepairDate(e.target.value)} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"/>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Fecha Estimada de Reparación (Opcional)</label>
+                                <input type="date" value={estimatedRepairDate} onChange={e => setEstimatedRepairDate(e.target.value)} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md" />
                             </div>
-                             <div>
+                            <div>
                                 <label className="block text-sm font-medium text-gray-700">Agregar Actualización al Historial</label>
                                 <textarea value={newHistoryAction} onChange={e => setNewHistoryAction(e.target.value)} rows={3} className="w-full mt-1 p-2 border border-gray-300 rounded-md" placeholder="Ej: Se realizó diagnóstico, se solicita pieza de recambio."></textarea>
                             </div>
-                             <div className="text-right">
+                            <div className="text-right">
                                 <button onClick={handleUpdate} className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">Guardar Actualización</button>
                             </div>
-                         </div>
+                        </div>
                     )}
                     {!canAssign && !canUpdate && <p className="text-gray-500 text-sm">No tiene permisos para modificar esta orden en su estado actual.</p>}
                 </div>
@@ -263,9 +271,9 @@ const WorkOrderModal: React.FC<{
                     <h3 className="font-semibold text-lg mb-3 text-gray-800">Historial de la Orden</h3>
                     <div className="border rounded-lg max-h-60 overflow-y-auto">
                         {workOrder.history && workOrder.history.length > 0 ? (
-                             <ul className="divide-y">
+                            <ul className="divide-y">
                                 {[...workOrder.history].reverse().map(entry => (
-                                     <li key={entry.timestamp} className="p-3">
+                                    <li key={entry.timestamp} className="p-3">
                                         <p className="text-sm text-gray-800">{entry.action}</p>
                                         <p className="text-xs text-gray-500">Por: {getUserName(entry.userId)} - {new Date(entry.timestamp).toLocaleString()}</p>
                                     </li>
@@ -275,6 +283,36 @@ const WorkOrderModal: React.FC<{
                             <p className="p-3 text-gray-500">No hay historial para esta orden.</p>
                         )}
                     </div>
+                    {/* Display Official Format Button */}
+                    <div className="flex justify-end mb-4">
+                        <button
+                            onClick={() => setShowOfficialFormat(true)}
+                            className="bg-slate-700 text-white px-4 py-2 rounded-md hover:bg-slate-800 flex items-center"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Ver Formato Oficial
+                        </button>
+                    </div>
+
+
+
+                    {/* Inject Official Modal */}
+                    {showOfficialFormat && equipment && (
+                        <div className="fixed inset-0 bg-black bg-opacity-70 z-[70] flex justify-center items-center p-4 overflow-y-auto">
+                            {/* Wrapper specifically for the ServiceOrderForm to act as a modal on top of modal */}
+                            <ServiceOrderForm
+                                equipment={equipment}
+                                initialData={workOrder}
+                                mode={canAssign ? "edit" : "view"} // Or just view? User wants to see filled fields.
+                                onCancel={() => setShowOfficialFormat(false)}
+                                assigneeName={workOrder.serviceRealizedBy?.name || (assignedTo ? getUserName(assignedTo) : undefined)}
+                                assigneeRole={workOrder.serviceRealizedBy?.position || (assignedTo ? MOCK_USERS.find(u => u.id === assignedTo)?.role : undefined)}
+                                assignedDate={workOrder.serviceRealizedBy?.date || (workOrder.history?.find(h => h.action.includes('Asignado'))?.timestamp)}
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -301,16 +339,16 @@ const MaintenancePage: React.FC = () => {
 
     const getEquipmentName = (id: string) => equipment.find(e => e.id === id)?.name || 'Desconocido';
     const getTechnicianName = (id?: string) => id ? MOCK_USERS.find(u => u.id === id)?.name : 'No asignado';
-    
+
     return (
         <div>
-            {selectedWO && <WorkOrderModal 
-                workOrder={selectedWO} 
-                onClose={() => setSelectedWO(null)} 
+            {selectedWO && <WorkOrderModal
+                workOrder={selectedWO}
+                onClose={() => setSelectedWO(null)}
                 updateWorkOrder={updateWorkOrder}
                 updateEquipment={updateEquipment}
             />}
-            
+
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">Órdenes de Trabajo</h1>
             </div>
@@ -327,7 +365,7 @@ const MaintenancePage: React.FC = () => {
                             <option key={status} value={status}>{status}</option>
                         ))}
                     </select>
-                     <select
+                    <select
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-brand-blue focus:border-brand-blue dark:bg-slate-700 dark:border-gray-600 dark:text-gray-200"
                         value={typeFilter}
                         onChange={e => setTypeFilter(e.target.value as WorkOrderType | 'ALL')}
@@ -352,7 +390,7 @@ const MaintenancePage: React.FC = () => {
                             <th className="px-6 py-3">Asignado a</th>
                             <th className="px-6 py-3">Estado</th>
                             <th className="px-6 py-3">Creada</th>
-                             <th className="px-6 py-3">Acciones</th>
+                            <th className="px-6 py-3">Acciones</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y dark:divide-gray-700 text-gray-900 dark:text-gray-200">
@@ -374,7 +412,7 @@ const MaintenancePage: React.FC = () => {
                         ))}
                     </tbody>
                 </table>
-                 {filteredWorkOrders.length === 0 && (
+                {filteredWorkOrders.length === 0 && (
                     <p className="text-center py-8 text-gray-500 dark:text-gray-400">No se encontraron órdenes de trabajo con los filtros seleccionados.</p>
                 )}
             </div>
@@ -395,7 +433,7 @@ const MaintenancePage: React.FC = () => {
                             <p><strong>Asignado a:</strong> {getTechnicianName(wo.assignedTo)}</p>
                             <p><strong>Creada:</strong> {new Date(wo.createdAt).toLocaleDateString()}</p>
                         </div>
-                         <div className="border-t dark:border-gray-700 pt-3 text-right">
+                        <div className="border-t dark:border-gray-700 pt-3 text-right">
                             <button onClick={() => setSelectedWO(wo)} className="text-brand-blue font-semibold hover:underline">
                                 Ver / Gestionar &rarr;
                             </button>

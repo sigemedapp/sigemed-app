@@ -1,10 +1,6 @@
-
-
-
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Equipment, EquipmentStatus, Role, WorkOrderStatus } from '../components/layout/types';
+import { Equipment, EquipmentStatus, Role, WorkOrderStatus, WorkOrderType } from '../components/layout/types';
 import { useApp } from '../context/AppContext';
 
 declare const jsQR: any;
@@ -15,6 +11,7 @@ const EquipmentStatusBadge: React.FC<{ status: EquipmentStatus }> = ({ status })
         [EquipmentStatus.OPERATIONAL]: "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300",
         [EquipmentStatus.IN_MAINTENANCE]: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300",
         [EquipmentStatus.OUT_OF_SERVICE]: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300",
+        [EquipmentStatus.FAILURE_REPORTED]: "bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300",
     };
     return <span className={`${baseClasses} ${statusClasses[status]}`}>{status}</span>;
 };
@@ -131,21 +128,23 @@ const InventoryListPage: React.FC = () => {
     const [isScannerOpen, setIsScannerOpen] = useState(false);
     const [showWelcomeToast, setShowWelcomeToast] = useState(false);
     const navigate = useNavigate();
-    // FIX: Replaced useAuth and useInventory with useApp to resolve module errors.
     const { user, equipment, workOrders, addLogEntry } = useApp();
 
     const getDynamicStatus = (equipmentItem: Equipment): EquipmentStatus => {
-        const hasActiveWorkOrder = workOrders.some(
+        const activeWorkOrder = workOrders.find(
             wo => wo.equipmentId === equipmentItem.id && wo.status !== WorkOrderStatus.CLOSED
         );
 
-        if (hasActiveWorkOrder) {
+        if (activeWorkOrder) {
+            if (activeWorkOrder.type === WorkOrderType.CORRECTIVE || activeWorkOrder.type === WorkOrderType.FAILURE || activeWorkOrder.status === WorkOrderStatus.REPORTED) {
+                return EquipmentStatus.FAILURE_REPORTED;
+            }
             return equipmentItem.status;
         }
         if (equipmentItem.status === EquipmentStatus.OUT_OF_SERVICE) {
             return EquipmentStatus.OUT_OF_SERVICE;
         }
-        return EquipmentStatus.OPERATIONAL;
+        return equipmentItem.status;
     };
 
     const initialFilters = {
@@ -164,11 +163,11 @@ const InventoryListPage: React.FC = () => {
         const justLoggedIn = sessionStorage.getItem('justLoggedIn');
         if (justLoggedIn && user && (user.role === Role.READ_ONLY || user.role === Role.AREA_HEAD)) {
             setShowWelcomeToast(true);
-            sessionStorage.removeItem('justLoggedIn'); // Remove flag to prevent re-showing on refresh
+            sessionStorage.removeItem('justLoggedIn');
 
             const timer = setTimeout(() => {
                 setShowWelcomeToast(false);
-            }, 4000); // Hide after 4 seconds
+            }, 4000);
 
             return () => clearTimeout(timer);
         }
@@ -177,7 +176,6 @@ const InventoryListPage: React.FC = () => {
     const getAreaFromLocation = (location: string | null): string => (location || '').split(' - ')[0].trim();
 
     const { allAreas, allNames, allBrands, allModels } = useMemo(() => {
-        // FIX: Specified key types to resolve TypeScript errors with `map`.
         const unique = (key: 'name' | 'brand' | 'model') => [...new Set(equipment.map(e => e[key] || ''))].sort();
         const uniqueAreas = [...new Set(equipment.map(e => getAreaFromLocation(e.location)))].filter(Boolean).sort();
 
@@ -203,10 +201,8 @@ const InventoryListPage: React.FC = () => {
         if (searchTerm) {
             const lowercasedTerm = searchTerm.toLowerCase();
             filtered = filtered.filter(e =>
-                // Apply fuzzy search to name and serial number
                 fuzzyMatch(searchTerm, e.name || '') ||
                 fuzzyMatch(searchTerm, e.serialNumber || '') ||
-                // Keep standard search for other fields
                 (e.brand || '').toLowerCase().includes(lowercasedTerm) ||
                 (e.model || '').toLowerCase().includes(lowercasedTerm) ||
                 (e.location || '').toLowerCase().includes(lowercasedTerm) ||
@@ -217,7 +213,6 @@ const InventoryListPage: React.FC = () => {
         return filtered;
     }, [searchTerm, filters, equipment, workOrders]);
 
-    // Reset to first page whenever filters change
     useEffect(() => {
         setCurrentPage(1);
     }, [searchTerm, filters]);
@@ -251,7 +246,6 @@ const InventoryListPage: React.FC = () => {
         if (equipmentExists) {
             navigate(`/inventory/${qrData}`);
         } else {
-            // If not a direct match, populate search bar
             setSearchTerm(qrData);
         }
     };
@@ -265,10 +259,8 @@ const InventoryListPage: React.FC = () => {
             "Nombre", "Marca", "Modelo", "N/S", "Ubicación", "Estado", "Próximo Mantenimiento"
         ];
 
-        // Helper to format and escape CSV fields robustly
         const formatCSVField = (data: any): string => {
             const value = String(data ?? '');
-            // If the value contains a comma, quote, or newline, wrap it in double quotes and escape any existing double quotes
             if (/[",\n]/.test(value)) {
                 return `"${value.replace(/"/g, '""')}"`;
             }
@@ -289,7 +281,6 @@ const InventoryListPage: React.FC = () => {
         ];
 
         const csvString = csvRows.join('\n');
-        // Add BOM for Excel compatibility with UTF-8 characters
         const blob = new Blob([`\uFEFF${csvString}`], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
@@ -336,7 +327,6 @@ const InventoryListPage: React.FC = () => {
 
             <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-md mb-6 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                    {/* Independent filters */}
                     <select name="area" value={filters.area} onChange={handleFilterChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-brand-blue focus:border-brand-blue dark:bg-slate-700 dark:border-gray-600 dark:text-gray-200">
                         <option value="ALL">Todas las Áreas</option>
                         {allAreas.map(area => <option key={area} value={area}>{area}</option>)}
@@ -380,7 +370,6 @@ const InventoryListPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Responsive Table/Card view */}
             <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto">
                 <table className="w-full whitespace-nowrap">
                     <thead className="text-left font-bold bg-gray-50 dark:bg-slate-700 border-b dark:border-gray-700 text-gray-800 dark:text-gray-300">
@@ -415,7 +404,6 @@ const InventoryListPage: React.FC = () => {
                 )}
             </div>
 
-            {/* Mobile Card View */}
             <div className="md:hidden space-y-4">
                 {paginatedEquipment.map(eq => (
                     <div key={eq.id} className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4 space-y-3">
