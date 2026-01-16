@@ -85,8 +85,9 @@ const Sidebar: React.FC = () => {
                 {/* Admin Section */}
                 {canSee([Role.SUPER_ADMIN, Role.SYSTEM_ADMIN]) && (
                     <>
-                        <NavItem to="/reports" label="Reportes" icon={<IconReports />} />
+                        <NavItem to="/reports" label="Estatus" icon={<IconReports />} />
                         <NavItem to="/suppliers" label="Proveedores" icon={<IconSuppliers />} />
+                        <NavItem to="/audit-log" label="Auditoría" icon={<IconAuditLog />} />
                     </>
                 )}
 
@@ -99,7 +100,6 @@ const Sidebar: React.FC = () => {
                     <div className="pt-4 mt-4 border-t border-slate-700">
                         <NavItem to="/users" label="Gestionar Usuarios" icon={<IconUsers />} />
                         <NavItem to="/settings" label="Configuración" icon={<IconSettings />} />
-                        <NavItem to="/audit-log" label="Auditoría" icon={<IconAuditLog />} />
                     </div>
                 )}
 

@@ -4,6 +4,8 @@ import { useApp } from '../context/AppContext';
 import { MOCK_USERS } from '../constants';
 import { WorkOrder, WorkOrderStatus, WorkOrderType, Role, User, EquipmentStatus, Equipment } from '../components/layout/types';
 import ServiceOrderForm from '../components/ServiceOrderForm';
+import MaintenanceRequestForm from '../components/MaintenanceRequestForm';
+import EquipmentDepartureForm from '../components/EquipmentDepartureForm'; // F-IBM-05
 
 const WorkOrderStatusBadge: React.FC<{ status: WorkOrderStatus }> = ({ status }) => {
     const baseClasses = "px-2 py-1 text-xs font-semibold leading-5 rounded-full";
@@ -13,6 +15,17 @@ const WorkOrderStatusBadge: React.FC<{ status: WorkOrderStatus }> = ({ status })
         [WorkOrderStatus.IN_PROGRESS]: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300",
         [WorkOrderStatus.AWAITING_PART]: "bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300",
         [WorkOrderStatus.CLOSED]: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300",
+        // @ts-ignore
+        [WorkOrderStatus.FAILURE]: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300",
+        [WorkOrderStatus.MAINTENANCE_REQUEST]: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300",
+        [WorkOrderStatus.EQUIPMENT_DEPARTURE]: "bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300",
+        // F-IBM-05 Statuses
+        [WorkOrderStatus.ON_LOAN]: "bg-purple-100 text-purple-800",
+        [WorkOrderStatus.RETURNED_TO_SOURCE]: "bg-indigo-100 text-indigo-800",
+        [WorkOrderStatus.FOR_DIAGNOSIS]: "bg-blue-100 text-blue-800",
+        [WorkOrderStatus.EXTERNAL_PREVENTIVE]: "bg-teal-100 text-teal-800",
+        [WorkOrderStatus.EXTERNAL_CORRECTIVE]: "bg-rose-100 text-rose-800",
+        [WorkOrderStatus.OTHER_DEPARTURE]: "bg-gray-100 text-gray-800",
     };
     return <span className={`${baseClasses} ${statusClasses[status]}`}>{status}</span>;
 };
@@ -24,7 +37,7 @@ const WorkOrderModal: React.FC<{
     updateEquipment: (eq: Equipment) => void;
 }> = ({ workOrder, onClose, updateWorkOrder, updateEquipment }) => {
     // FIX: Replaced context hooks with useApp to resolve module errors.
-    const { user, equipment: allEquipment, sendEmail, addLogEntry } = useApp();
+    const { user, equipment: allEquipment, sendEmail, addLogEntry, addNotification } = useApp();
     const equipment = allEquipment.find(e => e.id === workOrder.equipmentId);
 
     // Local state for updates
@@ -36,7 +49,7 @@ const WorkOrderModal: React.FC<{
     const [equipmentStatus, setEquipmentStatus] = useState(equipment?.status || EquipmentStatus.OPERATIONAL);
     const [showOfficialFormat, setShowOfficialFormat] = useState(false);
 
-    const technicians = MOCK_USERS.filter(u => u.role === Role.BIOMEDICAL_ENGINEER || u.role === Role.SYSTEM_ADMIN);
+    const technicians = MOCK_USERS.filter(u => u.role === Role.BIOMEDICAL_ENGINEER || u.role === Role.SYSTEM_ADMIN || u.role === Role.SUPER_ADMIN);
 
     const getUserName = (id: string) => MOCK_USERS.find(u => u.id === id)?.name || 'Desconocido';
 
@@ -90,6 +103,13 @@ const WorkOrderModal: React.FC<{
                 <p>Saludos,</p>
                 <p>${user.name}</p>
             `
+        });
+
+        // Add Notification
+        addNotification({
+            message: `Nueva Orden Asignada: ${equipment.name}`,
+            type: 'info',
+            linkTo: `/maintenance?id=${workOrder.id}`
         });
 
         onClose();
@@ -266,6 +286,70 @@ const WorkOrderModal: React.FC<{
                     {!canAssign && !canUpdate && <p className="text-gray-500 text-sm">No tiene permisos para modificar esta orden en su estado actual.</p>}
                 </div>
 
+                {/* --- Evidence / Documents Section --- */}
+                {/* Visible if user can update OR just viewing */}
+                <div className="mt-6 bg-white border border-gray-200 rounded-lg p-4">
+                    <h3 className="font-semibold text-lg mb-3 text-gray-800">Documentos y Evidencia</h3>
+
+                    {/* List existing documents */}
+                    {workOrder.documents && workOrder.documents.length > 0 ? (
+                        <ul className="mb-4 space-y-2">
+                            {workOrder.documents.map((doc, idx) => (
+                                <li key={idx} className="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                    <div>
+                                        <span className="text-sm font-medium text-blue-600 hover:underline cursor-pointer" onClick={() => window.open(doc.fileUrl, '_blank')}>{doc.name}</span>
+                                        <span className="text-xs text-gray-500 block">{doc.type} - {new Date(doc.uploadedAt).toLocaleDateString()}</span>
+                                    </div>
+                                    {/* Allow delete only if can update */}
+                                    {canUpdate && (
+                                        <button
+                                            onClick={() => {
+                                                const updatedDocs = workOrder.documents?.filter((_, i) => i !== idx);
+                                                updateWorkOrder({ ...workOrder, documents: updatedDocs });
+                                                addLogEntry('Eliminó Evidencia de OT', `OT: ${workOrder.id}, Archivo: ${doc.name}`);
+                                            }}
+                                            className="text-red-500 hover:text-red-700 text-sm"
+                                        >
+                                            Eliminar
+                                        </button>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-sm text-gray-500 mb-4">No hay documentos adjuntos.</p>
+                    )}
+
+                    {/* Upload Form (only for assignee) */}
+                    {canUpdate && (
+                        <div className="border-t pt-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Agregar Nueva Evidencia / Foto</label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="file"
+                                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-brand-blue hover:file:bg-blue-100"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            // Simulate upload
+                                            const newDoc = {
+                                                id: `doc-${Date.now()}`,
+                                                name: file.name,
+                                                type: 'Otro' as any, // Simple default or add selector
+                                                fileUrl: URL.createObjectURL(file), // Local preview url
+                                                uploadedAt: new Date().toISOString()
+                                            };
+                                            const updatedDocs = [...(workOrder.documents || []), newDoc];
+                                            updateWorkOrder({ ...workOrder, documents: updatedDocs });
+                                            addLogEntry('Agregó Evidencia a OT', `OT: ${workOrder.id}, Archivo: ${file.name}`);
+                                        }
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+
                 {/* --- History Section --- */}
                 <div className="mt-6">
                     <h3 className="font-semibold text-lg mb-3 text-gray-800">Historial de la Orden</h3>
@@ -296,21 +380,49 @@ const WorkOrderModal: React.FC<{
                         </button>
                     </div>
 
+                    {/* Official Format Modal */}
+                    {showOfficialFormat && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black bg-opacity-70">
+                            <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white rounded-lg">
+                                <button
+                                    onClick={() => setShowOfficialFormat(false)}
+                                    className="absolute top-2 right-2 z-10 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 shadow-md"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
 
-
-                    {/* Inject Official Modal */}
-                    {showOfficialFormat && equipment && (
-                        <div className="fixed inset-0 bg-black bg-opacity-70 z-[70] flex justify-center items-center p-4 overflow-y-auto">
-                            {/* Wrapper specifically for the ServiceOrderForm to act as a modal on top of modal */}
-                            <ServiceOrderForm
-                                equipment={equipment}
-                                initialData={workOrder}
-                                mode={canAssign ? "edit" : "view"} // Or just view? User wants to see filled fields.
-                                onCancel={() => setShowOfficialFormat(false)}
-                                assigneeName={workOrder.serviceRealizedBy?.name || (assignedTo ? getUserName(assignedTo) : undefined)}
-                                assigneeRole={workOrder.serviceRealizedBy?.position || (assignedTo ? MOCK_USERS.find(u => u.id === assignedTo)?.role : undefined)}
-                                assignedDate={workOrder.serviceRealizedBy?.date || (workOrder.history?.find(h => h.action.includes('Asignado'))?.timestamp)}
-                            />
+                                {workOrder.type === WorkOrderType.MAINTENANCE_REQUEST ? (
+                                    <MaintenanceRequestForm
+                                        equipment={equipment}
+                                        mode="view"
+                                        initialData={workOrder}
+                                        onCancel={() => setShowOfficialFormat(false)}
+                                        currentUser={user}
+                                    />
+                                ) : workOrder.type === WorkOrderType.EQUIPMENT_DEPARTURE ? (
+                                    <EquipmentDepartureForm
+                                        equipment={equipment}
+                                        mode="view"
+                                        initialData={workOrder}
+                                        onCancel={() => setShowOfficialFormat(false)}
+                                        currentUser={user}
+                                    />
+                                ) : (
+                                    <ServiceOrderForm
+                                        equipment={equipment}
+                                        mode="view"
+                                        initialData={workOrder}
+                                        onSubmit={(data) => {
+                                            console.log('Update form data', data);
+                                        }}
+                                        onCancel={() => setShowOfficialFormat(false)}
+                                        currentUser={user}
+                                        assigneeName={workOrder.serviceRealizedBy?.name || (assignedTo ? getUserName(assignedTo) : undefined)}
+                                        assigneeRole={workOrder.serviceRealizedBy?.position || (assignedTo ? MOCK_USERS.find(u => u.id === assignedTo)?.role : undefined)}
+                                        assignedDate={workOrder.serviceRealizedBy?.date || (workOrder.history?.find(h => h.action.includes('Asignado'))?.timestamp)}
+                                    />
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>

@@ -48,6 +48,7 @@ interface AppContextType {
     isSearchOpen: boolean;
     openSearch: () => void;
     closeSearch: () => void;
+    addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>) => void;
     notifications: Notification[];
     unreadCount: number;
     markAsRead: (id: string) => void;
@@ -293,6 +294,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const unreadCount = useMemo(() => notifications.filter(n => !n.isRead).length, [notifications]);
+
+    // START: Notification Logic
+    const addNotification = useCallback((notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>) => {
+        const newNotification: Notification = {
+            ...notification,
+            id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            timestamp: new Date().toISOString(),
+            isRead: false
+        };
+        setNotifications(prev => [newNotification, ...prev]);
+    }, []);
+    // END: Notification Logic
+
     const markAsRead = useCallback((id: string) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n)), []);
     const markAllAsRead = useCallback(() => setNotifications(prev => prev.map(n => ({ ...n, isRead: true }))), []);
     const togglePanel = useCallback(() => setIsPanelOpen(prev => !prev), []);
@@ -301,7 +315,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         <AppContext.Provider value={{
             user, login, logout, equipment, refreshInventory, workOrders, suppliers, updateEquipment, updateWorkOrder, addWorkOrder, addSupplier, updateSupplier, deleteSupplier, addEquipment, deleteEquipment,
             theme, toggleTheme, isSidebarOpen, toggleSidebar, closeSidebar, isSearchOpen, openSearch, closeSearch,
-            notifications, unreadCount, markAsRead, markAllAsRead, isPanelOpen, togglePanel, emails: userEmails, sendEmail, markEmailAsRead, unreadEmailCount, logEntries, addLogEntry,
+            notifications, addNotification, unreadCount, markAsRead, markAllAsRead, isPanelOpen, togglePanel, emails: userEmails, sendEmail, markEmailAsRead, unreadEmailCount, logEntries, addLogEntry,
             isLoading
         }}>
             {children}

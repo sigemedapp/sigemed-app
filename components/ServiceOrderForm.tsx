@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Equipment, WorkOrderType, WorkOrder } from './layout/types';
-import { SIGEMED_FULL_LOGO } from '../assets/sigemed_full_logo';
+import { HOSPITAL_LOGO } from '../assets/hospital_logo';
 
 interface ServiceOrderFormProps {
     equipment: Equipment;
@@ -77,7 +77,7 @@ const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
                 {/* Header Table Structure */}
                 <div className="border-2 border-slate-800 mb-6 flex">
                     <div className="w-1/4 border-r-2 border-slate-800 p-2 flex items-center justify-center">
-                        <img src={SIGEMED_FULL_LOGO} alt="Hospitales Polanco" className="h-12 object-contain" />
+                        <img src={HOSPITAL_LOGO} alt="Hospitales Polanco" className="h-12 object-contain" />
                     </div>
                     <div className="w-1/2 border-r-2 border-slate-800 bg-slate-800 text-white flex flex-col items-center justify-center font-bold text-xl uppercase tracking-wider">
                         <div>ORDEN DE</div>

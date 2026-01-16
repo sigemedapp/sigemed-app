@@ -23,6 +23,13 @@ export enum EquipmentStatus {
   IN_MAINTENANCE = 'En Mantenimiento',
   OUT_OF_SERVICE = 'Fuera de Servicio',
   FAILURE_REPORTED = 'Con Reporte de Falla',
+  // F-IBM-05 Departure Statuses
+  LOAN = 'Comodato',
+  RETURN = 'Devolución',
+  DIAGNOSIS = 'Revisión / diagnóstico',
+  PREVENTIVE = 'Mantenimiento preventivo',
+  CORRECTIVE = 'Mantenimiento correctivo',
+  OTHER = 'Otro',
 }
 
 export enum DocumentType {
@@ -66,6 +73,16 @@ export enum WorkOrderStatus {
   IN_PROGRESS = 'En Progreso',
   AWAITING_PART = 'Esperando Refacción',
   CLOSED = 'Cerrada',
+  FAILURE = 'Falla Reportada',
+  MAINTENANCE_REQUEST = 'Solicitud de Mantenimiento',
+  EQUIPMENT_DEPARTURE = 'Salida de Equipo',
+  // F-IBM-05 Specific Statuses
+  ON_LOAN = 'Comodato',
+  RETURNED_TO_SOURCE = 'Devolución',
+  FOR_DIAGNOSIS = 'Revisión / diagnóstico',
+  EXTERNAL_PREVENTIVE = 'Mantenimiento preventivo',
+  EXTERNAL_CORRECTIVE = 'Mantenimiento correctivo',
+  OTHER_DEPARTURE = 'Otro',
 }
 
 export enum WorkOrderType {
@@ -75,6 +92,8 @@ export enum WorkOrderType {
   TRAINING = 'Asesoría / Capacitación',
   CHECK = 'Revisión',
   OTHER = 'Otro',
+  MAINTENANCE_REQUEST = 'Solicitud de Mantenimiento',
+  EQUIPMENT_DEPARTURE = 'Salida de Equipo',
 }
 
 export interface WorkOrderHistory {
@@ -109,6 +128,20 @@ export interface WorkOrder {
   materialsUsed?: { description: string; quantity: number; partNumber: string; }[];
   serviceRealizedBy?: { name: string; position: string; date: string; signature?: string; };
   receivedBy?: { name: string; position: string; date: string; signature?: string; };
+
+  // New fields for Maintenance Request (F-IBM-04)
+  failureType?: 'mechanical' | 'electrical' | 'other';
+  failureTypeOther?: string;
+  requestTime?: string; // HH:mm
+  documents?: EquipmentDocument[];
+
+  // New fields for Equipment Departure (F-IBM-05)
+  accessories?: string;
+  departureReason?: 'Comodato' | 'Devolución' | 'Revisión / diagnóstico' | 'Mantenimiento preventivo' | 'Mantenimiento correctivo' | 'Otro';
+  departureReasonOther?: string;
+  authorizedBy?: string; // Name/Signature of Dirección Médica
+  receivedByOutside?: string; // Name/Signature of Recibe Proveedor
+  sender?: string; // Name of Entrega Ingeniería Biomédica (System User)
 }
 
 export interface ProcedureManual {

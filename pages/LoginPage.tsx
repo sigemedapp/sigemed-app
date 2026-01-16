@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { User } from '../components/layout/types';
+import { MOCK_USERS } from '../constants';
 import { SIGEMED_FULL_LOGO } from '../assets/sigemed_full_logo';
 
 interface LoginPageProps {
@@ -30,7 +31,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        onLogin(data.user);
+        // ENFORCE LOCAL ROLES: Check if user exists in local mocks to ensure Roles match the Frontend Enum
+        // This fixes the issue where Backend returns "SUPER_ADMIN" (string) but Frontend expects "Super Administrador" (Enum)
+        const localUser = MOCK_USERS.find(u => u.email === email);
+        if (localUser) {
+          console.log("Using Local Mock User for Session:", localUser);
+          onLogin(localUser);
+        } else {
+          onLogin(data.user);
+        }
       } else {
         setError(data.message || 'Ocurrió un error. Por favor, intente de nuevo.');
       }
