@@ -583,3 +583,219 @@ export const generateDeparturePDF = (data: DepartureData): void => {
     // Open
     openPDFInNewTab(doc, `F-IBM-05_${data.folio}.pdf`);
 };
+
+export interface LoanRequestData {
+    folio: string;
+    requesterName: string;
+    requesterPosition: string;
+    requestingArea: string;
+    requestDate: string;
+    reason: string;
+    duration: string;
+    items: {
+        name: string;
+        brand: string;
+        model: string;
+        accessories: string;
+        quantity: number;
+    }[];
+    providerCompany: string;
+    providerAddress: string;
+    providerContacts: string;
+    authorizedBy: string;
+}
+
+export const generateLoanRequestPDF = (data: LoanRequestData): void => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 15;
+    const contentWidth = pageWidth - (margin * 2);
+
+    // -- Header --
+    doc.setDrawColor(0);
+    // Left Box (Logo)
+    doc.rect(margin, 10, 50, 20);
+    doc.addImage(HOSPITAL_LOGO, 'PNG', margin + 2, 11, 46, 18);
+
+    // Middle Box (Title)
+    doc.setFillColor(40, 40, 40);
+    doc.rect(margin + 50, 10, 80, 20, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SOLICITUD DE', margin + 90, 16, { align: 'center' });
+    doc.text('EQUIPO EN', margin + 90, 21, { align: 'center' });
+    doc.text('COMODATO', margin + 90, 26, { align: 'center' });
+
+    // Right Box (Meta)
+    doc.setTextColor(0, 0, 0);
+    doc.rect(margin + 130, 10, 50, 20);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.text('F-IBM-06', margin + 178, 14, { align: 'right' });
+    doc.text('Fecha de emisión: Diciembre 2025', margin + 178, 19, { align: 'right' });
+    doc.text('Fecha de revisión: Diciembre 2027', margin + 178, 24, { align: 'right' });
+    doc.text('Versión 1', margin + 178, 29, { align: 'right' });
+    doc.text('1 de 1', margin + 178, 34, { align: 'right' }); // Just below box or inside? Image shows inside bottom right roughly.
+
+    let y = 35;
+
+    // Helper for Section Headers
+    const drawSectionHeader = (text: string, yPos: number) => {
+        doc.setFillColor(80, 80, 80);
+        doc.setTextColor(255, 255, 255);
+        doc.rect(margin, yPos, contentWidth, 7, 'F');
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text(text, margin + (contentWidth / 2), yPos + 5, { align: 'center' });
+        return yPos + 7;
+    };
+
+    // Datos del Solicitante
+    y = drawSectionHeader('Datos del solicitante', y);
+    doc.setTextColor(0);
+    doc.setFontSize(9);
+
+    // Headers Row
+    doc.setFillColor(150, 150, 150);
+    doc.setTextColor(255, 255, 255);
+    doc.rect(margin, y, contentWidth, 6, 'F');
+    doc.text('Nombre', margin + (contentWidth / 8), y + 4, { align: 'center' });
+    doc.text('Puesto', margin + (contentWidth * 3 / 8), y + 4, { align: 'center' });
+    doc.text('Área solicitante', margin + (contentWidth * 5 / 8), y + 4, { align: 'center' });
+    doc.text('Fecha', margin + (contentWidth * 7 / 8), y + 4, { align: 'center' });
+    y += 6;
+
+    // Values Row
+    doc.setTextColor(0);
+    doc.setFont('helvetica', 'normal');
+    doc.rect(margin, y, contentWidth / 4, 10);
+    doc.text(data.requesterName, margin + 2, y + 6);
+    doc.rect(margin + (contentWidth / 4), y, contentWidth / 4, 10);
+    doc.text(data.requesterPosition, margin + (contentWidth / 4) + 2, y + 6);
+    doc.rect(margin + (contentWidth / 2), y, contentWidth / 4, 10);
+    doc.text(data.requestingArea, margin + (contentWidth / 2) + 2, y + 6);
+    doc.rect(margin + (contentWidth * 3 / 4), y, contentWidth / 4, 10);
+    doc.text(data.requestDate, margin + (contentWidth * 3 / 4) + 2, y + 6);
+    y += 15;
+
+    // Motivo y Tiempo
+    const halfWidth = contentWidth / 2;
+    doc.setFillColor(80, 80, 80);
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.rect(margin, y, halfWidth, 7, 'F');
+    doc.text('Motivo de solicitud', margin + (halfWidth / 2), y + 5, { align: 'center' });
+    doc.rect(margin + halfWidth, y, halfWidth, 7, 'F');
+    doc.text('Tiempo en comodato', margin + halfWidth + (halfWidth / 2), y + 5, { align: 'center' });
+    y += 7;
+
+    doc.setTextColor(0);
+    doc.setFont('helvetica', 'normal');
+    doc.rect(margin, y, halfWidth, 15);
+    addWrappedText(doc, data.reason, margin + 2, y + 5, halfWidth - 4, 4);
+    doc.rect(margin + halfWidth, y, halfWidth, 15);
+    doc.text(data.duration, margin + halfWidth + 2, y + 8);
+    y += 20;
+
+    // Datos del Equipo
+    y = drawSectionHeader('Datos del equipo', y);
+
+    // Table Headers
+    const col1 = margin;
+    const w1 = 50; // Nombre
+    const col2 = col1 + w1;
+    const w2 = 30; // Marca
+    const col3 = col2 + w2;
+    const w3 = 30; // Modelo
+    const col4 = col3 + w3;
+    const w4 = 50; // Accesorios
+    const col5 = col4 + w4;
+    const w5 = 20; // Cantidad - remaining
+
+    doc.setFillColor(150, 150, 150);
+    doc.setTextColor(255, 255, 255);
+    doc.rect(margin, y, contentWidth, 6, 'F');
+    doc.setFontSize(8);
+    doc.text('Nombre del equipo', col1 + 2, y + 4);
+    doc.text('Marca', col2 + 2, y + 4);
+    doc.text('Modelo', col3 + 2, y + 4);
+    doc.text('Accesorios / Insumos', col4 + 2, y + 4);
+    doc.text('Cantidad', col5 + 2, y + 4);
+    y += 6;
+
+    // Table Body
+    doc.setTextColor(0);
+    doc.setFont('helvetica', 'normal');
+
+    // Ensure at least 5 rows like in the image
+    const rowsToRender = Math.max(data.items.length, 5);
+
+    for (let i = 0; i < rowsToRender; i++) {
+        const item = data.items[i] || { name: '', brand: '', model: '', accessories: '', quantity: '' };
+
+        doc.rect(col1, y, w1, 8);
+        doc.text(item.name, col1 + 1, y + 5);
+
+        doc.rect(col2, y, w2, 8);
+        doc.text(item.brand || '', col2 + 1, y + 5);
+
+        doc.rect(col3, y, w3, 8);
+        doc.text(item.model || '', col3 + 1, y + 5);
+
+        doc.rect(col4, y, w4, 8);
+        doc.text(item.accessories || '', col4 + 1, y + 5);
+
+        doc.rect(col5, y, w5, 8); // adjusted width to fit contentWidth
+        doc.text(String(item.quantity || ''), col5 + 1, y + 5);
+
+        y += 8;
+    }
+    y += 5;
+
+    // Datos del proveedor
+    y = drawSectionHeader('Datos del proveedor', y);
+    doc.setFillColor(150, 150, 150);
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    doc.rect(margin, y, contentWidth, 6, 'F');
+    doc.text('Empresa', margin + (contentWidth / 6), y + 4, { align: 'center' });
+    doc.text('Dirección', margin + (contentWidth / 2), y + 4, { align: 'center' });
+    doc.text('Contactos', margin + (contentWidth * 5 / 6), y + 4, { align: 'center' });
+    y += 6;
+
+    doc.setTextColor(0);
+    doc.setFont('helvetica', 'normal');
+    const provHeight = 15;
+    doc.rect(margin, y, contentWidth / 3, provHeight);
+    addWrappedText(doc, data.providerCompany, margin + 2, y + 5, (contentWidth / 3) - 4, 4);
+
+    doc.rect(margin + (contentWidth / 3), y, contentWidth / 3, provHeight);
+    addWrappedText(doc, data.providerAddress, margin + (contentWidth / 3) + 2, y + 5, (contentWidth / 3) - 4, 4);
+
+    doc.rect(margin + (contentWidth * 2 / 3), y, contentWidth / 3, provHeight);
+    addWrappedText(doc, data.providerContacts, margin + (contentWidth * 2 / 3) + 2, y + 5, (contentWidth / 3) - 4, 4);
+    y += 20;
+
+    // Signatures
+    y += 30; // Space for signature
+    const sigWidth = 80;
+
+    // Solicita
+    doc.line(margin + 10, y, margin + 10 + sigWidth, y);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Solicita', margin + 10 + (sigWidth / 2), y + 5, { align: 'center' });
+    doc.text('Ingeniería Biomédica', margin + 10 + (sigWidth / 2), y + 10, { align: 'center' });
+
+    // Autoriza
+    doc.line(pageWidth - margin - 10 - sigWidth, y, pageWidth - margin - 10, y);
+    doc.text('Autoriza', pageWidth - margin - 10 - (sigWidth / 2), y + 5, { align: 'center' });
+    doc.text('Dirección Médica', pageWidth - margin - 10 - (sigWidth / 2), y + 10, { align: 'center' });
+
+    // Footer
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'normal');
+    doc.text('DOCUMENTO CONTROLADO | PROHIBIDA SU REPRODUCCIÓN NO AUTORIZADA', pageWidth / 2, pageWidth - 20, { align: 'center' }); // Bottom of page roughly
+
+    openPDFInNewTab(doc, `F-IBM-06_${data.folio}.pdf`);
+};

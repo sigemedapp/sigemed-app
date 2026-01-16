@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { ProcedureManual, Role } from '../components/layout/types';
+import LoanRequestForm from '../components/LoanRequestForm';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -114,6 +115,7 @@ const ProceduresPage: React.FC = () => {
     const { user, addLogEntry } = useApp();
     const [manuals, setManuals] = useState<ProcedureManual[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isLoanModalOpen, setIsLoanModalOpen] = useState(false);
 
     const fetchManuals = async () => {
         try {
@@ -158,7 +160,44 @@ const ProceduresPage: React.FC = () => {
 
     return (
         <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-6">Manual de Procedimientos</h1>
+
+
+            <h1 className="text-3xl font-bold text-gray-800 mb-6">Manual de Procedimientos y Formatos</h1>
+
+            {/* Interactive Forms Section */}
+            {user && [Role.SUPER_ADMIN, Role.SYSTEM_ADMIN, Role.BIOMEDICAL_ENGINEER].includes(user.role) && (
+                <div className="bg-white p-6 rounded-lg shadow-md mb-8 border-l-4 border-brand-blue">
+                    <h2 className="text-xl font-semibold text-gray-700 mb-4">Formatos Interactivos</h2>
+                    <div className="flex gap-4">
+                        <button
+                            onClick={() => setIsLoanModalOpen(true)}
+                            className="flex items-center bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition shadow-sm"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <div>
+                                <div className="font-bold">F-IBM-06</div>
+                                <div className="text-xs text-indigo-100">Solicitud de Equipo en Comodato</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal */}
+            {isLoanModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <LoanRequestForm
+                        currentUser={user}
+                        onCancel={() => setIsLoanModalOpen(false)}
+                        onSuccess={() => {
+                            setIsLoanModalOpen(false);
+                            addLogEntry('Generó Solicitud F-IBM-06');
+                        }}
+                    />
+                </div>
+            )}
 
             {user && [Role.SUPER_ADMIN, Role.SYSTEM_ADMIN].includes(user.role) && <AdminUploadPanel onAddManual={handleAddManual} />}
 

@@ -12,6 +12,13 @@ const EquipmentStatusBadge: React.FC<{ status: EquipmentStatus }> = ({ status })
         [EquipmentStatus.IN_MAINTENANCE]: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300",
         [EquipmentStatus.OUT_OF_SERVICE]: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300",
         [EquipmentStatus.FAILURE_REPORTED]: "bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300",
+        // New Statuses
+        [EquipmentStatus.LOAN]: "bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300",
+        [EquipmentStatus.RETURN]: "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300",
+        [EquipmentStatus.DIAGNOSIS]: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300",
+        [EquipmentStatus.PREVENTIVE]: "bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300",
+        [EquipmentStatus.CORRECTIVE]: "bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-300",
+        [EquipmentStatus.OTHER]: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300",
     };
     return <span className={`${baseClasses} ${statusClasses[status]}`}>{status}</span>;
 };
@@ -128,7 +135,7 @@ const InventoryListPage: React.FC = () => {
     const [isScannerOpen, setIsScannerOpen] = useState(false);
     const [showWelcomeToast, setShowWelcomeToast] = useState(false);
     const navigate = useNavigate();
-    const { user, equipment, workOrders, addLogEntry } = useApp();
+    const { user, equipment, workOrders, addLogEntry, refreshInventory } = useApp();
 
     const getDynamicStatus = (equipmentItem: Equipment): EquipmentStatus => {
         const activeWorkOrder = workOrders.find(
@@ -136,7 +143,7 @@ const InventoryListPage: React.FC = () => {
         );
 
         if (activeWorkOrder) {
-            if (activeWorkOrder.type === WorkOrderType.CORRECTIVE || activeWorkOrder.type === WorkOrderType.FAILURE || activeWorkOrder.status === WorkOrderStatus.REPORTED) {
+            if (activeWorkOrder.type === WorkOrderType.CORRECTIVE || activeWorkOrder.status === WorkOrderStatus.REPORTED) {
                 return EquipmentStatus.FAILURE_REPORTED;
             }
             return equipmentItem.status;
@@ -322,6 +329,13 @@ const InventoryListPage: React.FC = () => {
                             Gestionar Inventario
                         </Link>
                     )}
+                    <button
+                        onClick={() => refreshInventory()}
+                        className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 flex items-center"
+                        title="Actualizar lista de inventario"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    </button>
                 </div>
             </div>
 

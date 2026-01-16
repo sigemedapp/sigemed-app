@@ -20,10 +20,10 @@ const EquipmentStatusBadge: React.FC<{ status: EquipmentStatus }> = ({ status })
         [EquipmentStatus.FAILURE_REPORTED]: "bg-orange-100 text-orange-800",
         // F-IBM-05 Statuses
         [EquipmentStatus.LOAN]: "bg-purple-100 text-purple-800",
-        [EquipmentStatus.RETURN]: "bg-indigo-100 text-indigo-800",
-        [EquipmentStatus.DIAGNOSIS]: "bg-blue-100 text-blue-800",
+        [EquipmentStatus.RETURN]: "bg-blue-100 text-blue-800", // Fixed color name if needed (indigo vs blue)
+        [EquipmentStatus.DIAGNOSIS]: "bg-indigo-100 text-indigo-800",
         [EquipmentStatus.PREVENTIVE]: "bg-teal-100 text-teal-800",
-        [EquipmentStatus.CORRECTIVE]: "bg-rose-100 text-rose-800",
+        [EquipmentStatus.CORRECTIVE]: "bg-pink-100 text-pink-800",
         [EquipmentStatus.OTHER]: "bg-gray-100 text-gray-800",
     };
     return <span className={`${baseClasses} ${statusClasses[status]}`}>{status}</span>;
@@ -260,7 +260,6 @@ const EquipmentDetailPage: React.FC = () => {
             description: data.description || 'Reporte de Falla',
             assignedTo: 'pending',
             estimatedRepairDate: undefined,
-            partsNeeded: '',
             partsNeeded: '',
             status: (data.type === WorkOrderType.EQUIPMENT_DEPARTURE && data.departureReason)
                 ? (() => {
