@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { TrainingManual, Role } from '../components/layout/types';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const BASE_URL = (import.meta as any).env.VITE_API_BASE_URL || '';
 
 const AdminUploadPanel: React.FC<{ onAddManual: (manual: TrainingManual) => void }> = ({ onAddManual }) => {
     const [name, setName] = useState('');

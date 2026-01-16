@@ -11,6 +11,16 @@ const WorkOrderStatusBadge: React.FC<{ status: WorkOrderStatus }> = ({ status })
         [WorkOrderStatus.IN_PROGRESS]: "bg-yellow-100 text-yellow-800",
         [WorkOrderStatus.AWAITING_PART]: "bg-purple-100 text-purple-800",
         [WorkOrderStatus.CLOSED]: "bg-gray-100 text-gray-800",
+        // Additional statuses
+        [WorkOrderStatus.FAILURE]: "bg-red-100 text-red-800",
+        [WorkOrderStatus.MAINTENANCE_REQUEST]: "bg-orange-100 text-orange-800",
+        [WorkOrderStatus.EQUIPMENT_DEPARTURE]: "bg-indigo-100 text-indigo-800",
+        [WorkOrderStatus.ON_LOAN]: "bg-purple-100 text-purple-800",
+        [WorkOrderStatus.RETURNED_TO_SOURCE]: "bg-blue-100 text-blue-800",
+        [WorkOrderStatus.FOR_DIAGNOSIS]: "bg-yellow-100 text-yellow-800",
+        [WorkOrderStatus.EXTERNAL_PREVENTIVE]: "bg-teal-100 text-teal-800",
+        [WorkOrderStatus.EXTERNAL_CORRECTIVE]: "bg-pink-100 text-pink-800",
+        [WorkOrderStatus.OTHER_DEPARTURE]: "bg-gray-100 text-gray-800",
     };
     return <span className={`${baseClasses} ${statusClasses[status]}`}>{status}</span>;
 };
@@ -23,7 +33,7 @@ const CalibrationModal: React.FC<{
 }> = ({ workOrder, onClose, updateWorkOrder, updateEquipment }) => {
     const { user, equipment: allEquipment, addLogEntry } = useApp();
     const equipment = allEquipment.find(e => e.id === workOrder.equipmentId);
-    
+
     const [status, setStatus] = useState(workOrder.status);
     const [newHistoryAction, setNewHistoryAction] = useState('');
     const [certificateFile, setCertificateFile] = useState<File | null>(null);
@@ -41,11 +51,11 @@ const CalibrationModal: React.FC<{
         if (workOrder.status !== status) {
             logDetails.push(`Estado de OT cambiado de '${workOrder.status}' a '${status}'.`);
         }
-        
+
         if (newHistoryAction.trim()) {
             updatedHistory.push({ timestamp: new Date().toISOString(), userId: user.id, action: newHistoryAction.trim() });
         }
-        
+
         if (removeCertificate) {
             updatedWorkOrder.calibrationCertificateUrl = undefined;
             updatedHistory.push({ timestamp: new Date().toISOString(), userId: user.id, action: `Certificado de calibración eliminado.` });
@@ -59,25 +69,25 @@ const CalibrationModal: React.FC<{
         if (status === WorkOrderStatus.CLOSED && workOrder.status !== WorkOrderStatus.CLOSED) {
             const today = new Date();
             const nextYear = new Date(new Date().setFullYear(today.getFullYear() + 1));
-            
+
             const updatedEquipment = {
                 ...equipment,
                 lastCalibrationDate: today.toISOString().split('T')[0],
                 nextCalibrationDate: nextYear.toISOString().split('T')[0],
             };
-            
+
             updatedHistory.push({ timestamp: new Date().toISOString(), userId: user.id, action: `Calibración completada. Próxima calibración programada para: ${updatedEquipment.nextCalibrationDate}.` });
             updateEquipment(updatedEquipment);
             logDetails.push(`Próxima calibración: ${updatedEquipment.nextCalibrationDate}.`);
         }
-        
+
         updatedWorkOrder.history = updatedHistory;
         updateWorkOrder(updatedWorkOrder);
-        
+
         if (logDetails.length > 0) {
             addLogEntry('Actualizó Orden de Calibración', `OT: ${workOrder.id}. ${logDetails.join(' ')}`);
         }
-        
+
         onClose();
     };
 
@@ -97,16 +107,16 @@ const CalibrationModal: React.FC<{
         ];
         csvContent += details.map(row => `"${row[0]}","${row[1]}"`).join('\n');
         csvContent += '\n\n';
-        
+
         csvContent += "Historial de la Orden\n";
         csvContent += "Fecha,Usuario,Acción\n";
         if (workOrder.history) {
             [...workOrder.history].reverse().forEach(entry => {
-                const row = [ new Date(entry.timestamp).toLocaleString(), getUserName(entry.userId), `"${entry.action.replace(/"/g, '""')}"` ];
+                const row = [new Date(entry.timestamp).toLocaleString(), getUserName(entry.userId), `"${entry.action.replace(/"/g, '""')}"`];
                 csvContent += row.join(',') + '\n';
             });
         }
-        
+
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
@@ -122,14 +132,14 @@ const CalibrationModal: React.FC<{
             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-full overflow-y-auto">
                 <div className="flex justify-between items-start">
                     <h2 className="text-2xl font-bold mb-4 text-gray-800">Gestionar Calibración - {workOrder.id}</h2>
-                     <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2">
                         <button onClick={handleExportToCSV} className="p-2 rounded-full text-gray-500 hover:bg-gray-100" title="Exportar a CSV">
-                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                         </button>
                         <button onClick={onClose} className="text-2xl font-bold text-gray-500 hover:text-gray-800">&times;</button>
                     </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 text-gray-900">
                     <div><p><strong>Equipo:</strong> {equipment?.name}</p></div>
                     <div><p><strong>N/S:</strong> {equipment?.serialNumber}</p></div>
@@ -143,10 +153,10 @@ const CalibrationModal: React.FC<{
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Cambiar Estado</label>
                         <select value={status} onChange={e => setStatus(e.target.value as WorkOrderStatus)} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md">
-                           {[WorkOrderStatus.OPEN, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.CLOSED].map(s => <option key={s} value={s}>{s}</option>)}
+                            {[WorkOrderStatus.OPEN, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.CLOSED].map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                     </div>
-                     <div>
+                    <div>
                         <label className="block text-sm font-medium text-gray-700">Certificado de Calibración (PDF)</label>
                         <input type="file" onChange={e => { setCertificateFile(e.target.files ? e.target.files[0] : null); setRemoveCertificate(false); }} accept=".pdf" className="mt-1 block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-brand-blue hover:file:bg-blue-100" />
                         {workOrder.calibrationCertificateUrl && (
@@ -155,28 +165,28 @@ const CalibrationModal: React.FC<{
                                     Certificado actual: <a href={workOrder.calibrationCertificateUrl} target="_blank" rel="noopener noreferrer" className="text-brand-blue underline">{workOrder.calibrationCertificateUrl.split('/').pop()}</a>
                                 </p>
                                 <div className="flex items-center mt-1">
-                                    <input id="remove-cert" type="checkbox" checked={removeCertificate} onChange={e => { setRemoveCertificate(e.target.checked); if (e.target.checked) setCertificateFile(null); }} className="h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500"/>
+                                    <input id="remove-cert" type="checkbox" checked={removeCertificate} onChange={e => { setRemoveCertificate(e.target.checked); if (e.target.checked) setCertificateFile(null); }} className="h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500" />
                                     <label htmlFor="remove-cert" className="ml-2 block text-sm text-red-600 font-medium">Quitar certificado actual</label>
                                 </div>
                             </div>
                         )}
                     </div>
                     <div>
-                       <label className="block text-sm font-medium text-gray-700">Agregar Nota al Historial</label>
-                       <textarea value={newHistoryAction} onChange={e => setNewHistoryAction(e.target.value)} rows={3} className="w-full mt-1 p-2 border border-gray-300 rounded-md" placeholder="Ej: Se utilizaron patrones de prueba X y Y."></textarea>
-                   </div>
+                        <label className="block text-sm font-medium text-gray-700">Agregar Nota al Historial</label>
+                        <textarea value={newHistoryAction} onChange={e => setNewHistoryAction(e.target.value)} rows={3} className="w-full mt-1 p-2 border border-gray-300 rounded-md" placeholder="Ej: Se utilizaron patrones de prueba X y Y."></textarea>
+                    </div>
                     <div className="text-right">
-                       <button onClick={handleUpdate} className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">Guardar Actualización</button>
-                   </div>
+                        <button onClick={handleUpdate} className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">Guardar Actualización</button>
+                    </div>
                 </div>
 
                 <div className="mt-6">
                     <h3 className="font-semibold text-lg mb-3 text-gray-800">Historial</h3>
                     <div className="border rounded-lg max-h-48 overflow-y-auto">
                         {workOrder.history && workOrder.history.length > 0 ? (
-                             <ul className="divide-y">
+                            <ul className="divide-y">
                                 {[...workOrder.history].reverse().map(entry => (
-                                     <li key={entry.timestamp} className="p-3">
+                                    <li key={entry.timestamp} className="p-3">
                                         <p className="text-sm text-gray-800">{entry.action}</p>
                                         <p className="text-xs text-gray-500">Por: {getUserName(entry.userId)} - {new Date(entry.timestamp).toLocaleString()}</p>
                                     </li>
@@ -205,7 +215,7 @@ const CalibrationPage: React.FC = () => {
         }
         return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }, [statusFilter, workOrders]);
-    
+
     const pastCalibrationsByEquipment = useMemo(() => {
         const closedCalibrations = workOrders.filter(
             wo => wo.type === WorkOrderType.CALIBRATION && wo.status === WorkOrderStatus.CLOSED
@@ -225,7 +235,7 @@ const CalibrationPage: React.FC = () => {
     return (
         <div>
             {selectedWO && <CalibrationModal workOrder={selectedWO} onClose={() => setSelectedWO(null)} updateWorkOrder={updateWorkOrder} updateEquipment={updateEquipment} />}
-            
+
             <h1 className="text-3xl font-bold text-gray-800 mb-6">Gestión de Calibración</h1>
 
             <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-md mb-6">
@@ -265,7 +275,7 @@ const CalibrationPage: React.FC = () => {
                         })}
                     </tbody>
                 </table>
-                 {calibrationWorkOrders.length === 0 && (<p className="text-center py-8 text-gray-500 dark:text-gray-400">No se encontraron tareas de calibración con los filtros seleccionados.</p>)}
+                {calibrationWorkOrders.length === 0 && (<p className="text-center py-8 text-gray-500 dark:text-gray-400">No se encontraron tareas de calibración con los filtros seleccionados.</p>)}
             </div>
 
             <div className="mt-12">

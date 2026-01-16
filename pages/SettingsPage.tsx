@@ -195,7 +195,7 @@ const AddEquipmentModal: React.FC<{
 
 const SettingsPage: React.FC = () => {
     const { equipment, updateEquipment, addLogEntry, refreshInventory, addEquipment } = useApp();
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const baseUrl = (import.meta as any).env.VITE_API_BASE_URL || '';
 
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);

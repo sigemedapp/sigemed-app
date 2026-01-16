@@ -95,6 +95,7 @@ export enum WorkOrderType {
   OTHER = 'Otro',
   MAINTENANCE_REQUEST = 'Solicitud de Mantenimiento',
   EQUIPMENT_DEPARTURE = 'Salida de Equipo',
+  CALIBRATION = 'Calibración',
 }
 
 export interface WorkOrderHistory {

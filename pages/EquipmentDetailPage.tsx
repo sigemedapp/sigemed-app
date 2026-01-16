@@ -11,25 +11,7 @@ import ServiceOrderForm from '../components/ServiceOrderForm';
 import MaintenanceRequestForm from '../components/MaintenanceRequestForm';
 import EquipmentDepartureForm from '../components/EquipmentDepartureForm'; // F-IBM-05
 import InternalDepartureForm from '../components/InternalDepartureForm'; // F-IBM-10
-
-const EquipmentStatusBadge: React.FC<{ status: EquipmentStatus }> = ({ status }) => {
-    const baseClasses = "px-2 inline-flex text-xs leading-5 font-semibold rounded-full";
-    const statusClasses: Record<EquipmentStatus, string> = {
-        [EquipmentStatus.OPERATIONAL]: "bg-green-100 text-green-800",
-        [EquipmentStatus.IN_MAINTENANCE]: "bg-yellow-100 text-yellow-800",
-        [EquipmentStatus.OUT_OF_SERVICE]: "bg-red-100 text-red-800",
-        [EquipmentStatus.FAILURE_REPORTED]: "bg-orange-100 text-orange-800",
-        [EquipmentStatus.DONATION]: "bg-cyan-100 text-cyan-800",
-        // F-IBM-05 Statuses
-        [EquipmentStatus.LOAN]: "bg-purple-100 text-purple-800",
-        [EquipmentStatus.RETURN]: "bg-blue-100 text-blue-800", // Fixed color name if needed (indigo vs blue)
-        [EquipmentStatus.DIAGNOSIS]: "bg-indigo-100 text-indigo-800",
-        [EquipmentStatus.PREVENTIVE]: "bg-teal-100 text-teal-800",
-        [EquipmentStatus.CORRECTIVE]: "bg-pink-100 text-pink-800",
-        [EquipmentStatus.OTHER]: "bg-gray-100 text-gray-800",
-    };
-    return <span className={`${baseClasses} ${statusClasses[status]}`}>{status}</span>;
-};
+import { EquipmentStatusBadge } from '../components/EquipmentStatusBadge';
 
 const DetailItem: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
     <div>
