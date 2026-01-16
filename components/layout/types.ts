@@ -24,6 +24,7 @@ export enum EquipmentStatus {
   OUT_OF_SERVICE = 'Fuera de Servicio',
   FAILURE_REPORTED = 'Con Reporte de Falla',
   // F-IBM-05 Departure Statuses
+  DONATION = 'Donación',
   LOAN = 'Comodato',
   RETURN = 'Devolución',
   DIAGNOSIS = 'Revisión / diagnóstico',

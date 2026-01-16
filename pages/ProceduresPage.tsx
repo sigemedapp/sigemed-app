@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { ProcedureManual, Role } from '../components/layout/types';
 import LoanRequestForm from '../components/LoanRequestForm';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const BASE_URL = (import.meta as any).env.VITE_API_BASE_URL || '';
 
 const AdminUploadPanel: React.FC<{ onAddManual: (manual: ProcedureManual) => void }> = ({ onAddManual }) => {
     const [name, setName] = useState('');

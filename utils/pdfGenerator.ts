@@ -799,3 +799,229 @@ export const generateLoanRequestPDF = (data: LoanRequestData): void => {
 
     openPDFInNewTab(doc, `F-IBM-06_${data.folio}.pdf`);
 };
+
+// Interface for F-IBM-10 Internal Departure Data
+export interface InternalDepartureData {
+    folio: string;
+    date: string; // Emisión Dic 2025
+    location: string;
+    equipmentName: string;
+    brand: string;
+    model: string;
+    serialNumber: string;
+    inventoryNumber: string;
+    accessories: string;
+    description: string;
+    imageUrls: string[]; // For evidence
+    reason: 'Donación' | 'Préstamo' | 'Devolución' | 'Otro';
+    reasonOther?: string;
+    observations: string;
+    sender: string; // Entrega
+    receiver: string; // Recibe
+    receiverPosition: string;
+}
+
+export const generateInternalDeparturePDF = (data: InternalDepartureData): void => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 15;
+    const contentWidth = pageWidth - (margin * 2);
+    let y = 15;
+
+    // -- Header --
+    // Logo
+    doc.addImage(HOSPITAL_LOGO, 'PNG', margin, y, 40, 15);
+
+    // Title Box
+    doc.setFillColor(30, 30, 30); // Dark Gray/Black
+    doc.rect(margin + 45, y, 70, 15, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SALIDA INTERNA', margin + 80, y + 6, { align: 'center' });
+    doc.text('DE EQUIPO', margin + 80, y + 11, { align: 'center' });
+
+    // Info Box (Right)
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('F-IBM-10', pageWidth - margin, y + 4, { align: 'right' });
+    doc.text('Fecha de emisión: Diciembre 2025', pageWidth - margin, y + 8, { align: 'right' });
+    doc.text('Fecha de revisión: Diciembre 2027', pageWidth - margin, y + 12, { align: 'right' });
+    doc.text('Versión 1', pageWidth - margin, y + 16, { align: 'right' });
+
+    y += 25;
+
+    // Folio & Date
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Fecha: ${new Date().toLocaleDateString()}`, margin, y);
+    doc.text(`Folio: ${data.folio}`, margin, y + 5);
+    y += 10;
+
+    // Helper for table rows
+    const drawRow = (label1: string, val1: string, label2: string, val2: string, currentY: number) => {
+        doc.setFillColor(100, 100, 100); // Gray Header
+        doc.rect(margin, currentY, contentWidth / 2, 6, 'F');
+        doc.rect(margin + (contentWidth / 2), currentY, contentWidth / 2, 6, 'F');
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(9);
+        doc.text(label1, margin + (contentWidth / 4), currentY + 4, { align: 'center' });
+        doc.text(label2, margin + (contentWidth * 0.75), currentY + 4, { align: 'center' });
+
+        doc.setDrawColor(0);
+        doc.setFillColor(255, 255, 255);
+        doc.setTextColor(0, 0, 0);
+
+        // Values
+        doc.rect(margin, currentY + 6, contentWidth / 2, 8);
+        doc.rect(margin + (contentWidth / 2), currentY + 6, contentWidth / 2, 8);
+
+        doc.setFont('helvetica', 'normal');
+        doc.text(val1 || '', margin + 2, currentY + 11);
+        doc.text(val2 || '', margin + (contentWidth / 2) + 2, currentY + 11);
+
+        return currentY + 14;
+    };
+
+    y = drawRow('Ubicación del equipo', data.location, 'Equipo', data.equipmentName, y);
+    y = drawRow('Marca', data.brand, 'Modelo', data.model, y);
+    y = drawRow('No. de serie', data.serialNumber, 'No. de inventario', data.inventoryNumber, y);
+
+    // Accessories
+    doc.setFillColor(100, 100, 100);
+    doc.rect(margin, y, contentWidth, 6, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Partes y/o accesorios', pageWidth / 2, y + 4, { align: 'center' });
+
+    doc.setTextColor(0, 0, 0);
+    doc.rect(margin, y + 6, contentWidth, 15);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.accessories || 'Ninguno', margin + 2, y + 11);
+    y += 25;
+
+    // Description & Evidence
+    doc.setFillColor(100, 100, 100);
+    doc.rect(margin, y, contentWidth, 6, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Descripción y evidencia fotográfica', pageWidth / 2, y + 4, { align: 'center' });
+
+    doc.setTextColor(0, 0, 0);
+    doc.rect(margin, y + 6, contentWidth, 50);
+    doc.text(data.description || 'Sin descripción.', margin + 2, y + 11);
+
+    // Images Integration (Mock)
+    if (data.imageUrls && data.imageUrls.length > 0) {
+        // Just list them for now or try to add if they are valid Base64/URL
+        let imgX = margin + 5;
+        let imgY = y + 15;
+        data.imageUrls.forEach((url, index) => {
+            if (index < 3) {
+                doc.setFontSize(8);
+                doc.text(`[Imagen adjunta ${index + 1}]`, imgX, imgY);
+                imgX += 40;
+            }
+        });
+    }
+
+    y += 60;
+
+    // Reason
+    doc.setFillColor(100, 100, 100);
+    doc.rect(margin, y, contentWidth, 6, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Motivo de salida', pageWidth / 2, y + 4, { align: 'center' });
+
+    doc.setTextColor(0, 0, 0);
+    doc.rect(margin, y + 6, contentWidth, 12);
+
+    // Checkboxes
+    const reasonY = y + 10;
+    doc.setFont('helvetica', 'normal');
+
+    const check = (label: string, isChecked: boolean, x: number) => {
+        doc.rect(x, reasonY - 2, 4, 4);
+        if (isChecked) {
+            const currentSize = doc.getFontSize();
+            doc.setFontSize(8);
+            doc.text('X', x + 1, reasonY + 1.5);
+            doc.setFontSize(currentSize);
+        }
+        doc.text(label, x + 6, reasonY + 1);
+    };
+
+    check('Donación', data.reason === 'Donación', margin + 5);
+    check('Préstamo', data.reason === 'Préstamo', margin + 40);
+    check('Devolución', data.reason === 'Devolución', margin + 75);
+    check('Otro', data.reason === 'Otro', margin + 110);
+    if (data.reason === 'Otro' && data.reasonOther) {
+        doc.text(`: ${data.reasonOther}`, margin + 125, reasonY + 1);
+    }
+
+    y += 22;
+
+    // Observations
+    doc.setFillColor(100, 100, 100);
+    doc.rect(margin, y, contentWidth, 6, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Observaciones', pageWidth / 2, y + 4, { align: 'center' });
+
+    doc.setTextColor(0, 0, 0);
+    doc.rect(margin, y + 6, contentWidth, 20);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.observations || '', margin + 2, y + 11);
+
+    y += 30;
+
+    // Signatures
+    doc.setFillColor(100, 100, 100);
+    doc.rect(margin, y, contentWidth / 2 - 2, 6, 'F'); // Salida
+    doc.rect(margin + (contentWidth / 2) + 2, y, contentWidth / 2 - 2, 6, 'F'); // Recepción
+
+    doc.setTextColor(255, 255, 255);
+    doc.text('Salida', margin + (contentWidth / 4), y + 4, { align: 'center' });
+    doc.text('Recepción', margin + (contentWidth * 0.75), y + 4, { align: 'center' });
+
+    y += 30; // Space for signatures
+
+    doc.setDrawColor(0);
+    doc.setTextColor(0, 0, 0);
+
+    const sigY = y;
+    const colW = contentWidth / 4;
+
+    doc.line(margin, sigY, margin + colW - 5, sigY); // 1
+    doc.line(margin + colW, sigY, margin + (colW * 2) - 5, sigY); // 2
+    doc.line(margin + (colW * 2), sigY, margin + (colW * 3) - 5, sigY); // 3
+    doc.line(margin + (colW * 3), sigY, margin + contentWidth, sigY); // 4
+
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+
+    doc.text('Entrega', margin + (colW / 2) - 2.5, sigY + 4, { align: 'center' });
+    doc.text('Ingeniería Biomédica', margin + (colW / 2) - 2.5, sigY + 8, { align: 'center' });
+    doc.text(data.sender, margin + (colW / 2) - 2.5, sigY + 12, { align: 'center' });
+
+    doc.text('Autorización', margin + (colW * 1.5) - 2.5, sigY + 4, { align: 'center' });
+    doc.text('Dirección Médica', margin + (colW * 1.5) - 2.5, sigY + 8, { align: 'center' });
+
+    doc.text('Traslada', margin + (colW * 2.5) - 2.5, sigY + 4, { align: 'center' });
+    doc.text('Nombre del Responsable', margin + (colW * 2.5) - 2.5, sigY + 8, { align: 'center' });
+
+    doc.text('Recibe', margin + (colW * 3.5), sigY + 4, { align: 'center' });
+    doc.text('Nombre y cargo', margin + (colW * 3.5), sigY + 8, { align: 'center' });
+    doc.text(data.receiver, margin + (colW * 3.5), sigY + 12, { align: 'center' });
+    doc.text(data.receiverPosition, margin + (colW * 3.5), sigY + 15, { align: 'center' });
+
+    // Footer
+    doc.setFontSize(6);
+    doc.setTextColor(150);
+    doc.text('DOCUMENTO CONTROLADO | PROHIBIDA SU REPRODUCCIÓN NO AUTORIZADA', pageWidth / 2, pageWidth - 10, { align: 'center' });
+
+    openPDFInNewTab(doc, `F-IBM-10_${data.folio}.pdf`);
+};

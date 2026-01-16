@@ -10,6 +10,7 @@ import { SIGEMED_FULL_LOGO } from '../assets/sigemed_full_logo';
 import ServiceOrderForm from '../components/ServiceOrderForm';
 import MaintenanceRequestForm from '../components/MaintenanceRequestForm';
 import EquipmentDepartureForm from '../components/EquipmentDepartureForm'; // F-IBM-05
+import InternalDepartureForm from '../components/InternalDepartureForm'; // F-IBM-10
 
 const EquipmentStatusBadge: React.FC<{ status: EquipmentStatus }> = ({ status }) => {
     const baseClasses = "px-2 inline-flex text-xs leading-5 font-semibold rounded-full";
@@ -18,6 +19,7 @@ const EquipmentStatusBadge: React.FC<{ status: EquipmentStatus }> = ({ status })
         [EquipmentStatus.IN_MAINTENANCE]: "bg-yellow-100 text-yellow-800",
         [EquipmentStatus.OUT_OF_SERVICE]: "bg-red-100 text-red-800",
         [EquipmentStatus.FAILURE_REPORTED]: "bg-orange-100 text-orange-800",
+        [EquipmentStatus.DONATION]: "bg-cyan-100 text-cyan-800",
         // F-IBM-05 Statuses
         [EquipmentStatus.LOAN]: "bg-purple-100 text-purple-800",
         [EquipmentStatus.RETURN]: "bg-blue-100 text-blue-800", // Fixed color name if needed (indigo vs blue)
@@ -233,14 +235,17 @@ const EquipmentDetailPage: React.FC = () => {
         );
 
         if (hasActiveWorkOrder) {
-            return equipmentItem.status;
+            // Logic to prioritize failure reporting
+            const activeReport = workOrders.find(wo => wo.equipmentId === equipmentItem.id && (wo.type === WorkOrderType.CORRECTIVE || wo.status === WorkOrderStatus.REPORTED));
+            if (activeReport) return EquipmentStatus.FAILURE_REPORTED;
+
+            // If it's a special status, return it
+            if ([EquipmentStatus.LOAN, EquipmentStatus.DONATION, EquipmentStatus.RETURN, EquipmentStatus.DIAGNOSIS, EquipmentStatus.PREVENTIVE, EquipmentStatus.CORRECTIVE, EquipmentStatus.OTHER].includes(equipmentItem.status)) {
+                return equipmentItem.status;
+            }
         }
 
-        if (equipmentItem.status === EquipmentStatus.OUT_OF_SERVICE) {
-            return EquipmentStatus.OUT_OF_SERVICE;
-        }
-
-        return EquipmentStatus.OPERATIONAL;
+        return equipmentItem.status;
     };
 
     const equipmentStatus = useMemo(() => getDynamicStatus(equipment), [equipment, workOrders]);
@@ -250,6 +255,7 @@ const EquipmentDetailPage: React.FC = () => {
 
     const [isMaintenanceRequestOpen, setIsMaintenanceRequestOpen] = useState(false);
     const [isDepartureModalOpen, setIsDepartureModalOpen] = useState(false);
+    const [isInternalDepartureModalOpen, setIsInternalDepartureModalOpen] = useState(false);
 
     const handleReportSubmit = async (data: Partial<WorkOrder>) => {
         if (!equipment) return;
@@ -618,6 +624,19 @@ const EquipmentDetailPage: React.FC = () => {
                                                 </svg>
                                                 Salida de Equipo
                                             </button>
+
+                                            {/* Internal Departure Button (F-IBM-10) */}
+                                            <button
+                                                onClick={() => setIsInternalDepartureModalOpen(true)}
+                                                className="bg-teal-600 text-white px-4 py-2 rounded-md hover:bg-teal-700 flex items-center transition-colors shadow-sm ml-4"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                                </svg>
+                                                Salida Interna
+                                            </button>
+
+
                                         </>
                                     )}
                                 </div>
@@ -652,6 +671,20 @@ const EquipmentDetailPage: React.FC = () => {
                     />
                 </div>
             )}
+
+            {/* Internal Departure Modal (F-IBM-10) */}
+            {isInternalDepartureModalOpen && (
+                <div className="fixed inset-0 z-50 flex justify-center p-4 bg-black bg-opacity-50 overflow-y-auto items-start pt-10">
+                    <InternalDepartureForm
+                        equipment={equipment}
+                        currentUser={user}
+                        onCancel={() => setIsInternalDepartureModalOpen(false)}
+                        onSuccess={() => setIsInternalDepartureModalOpen(false)}
+                    />
+                </div>
+            )}
+
+
 
             {/* Decommission Documents Section - Only show for decommissioned equipment */}
             {equipment.status === EquipmentStatus.OUT_OF_SERVICE && (

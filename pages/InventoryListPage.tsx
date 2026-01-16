@@ -12,6 +12,7 @@ const EquipmentStatusBadge: React.FC<{ status: EquipmentStatus }> = ({ status })
         [EquipmentStatus.IN_MAINTENANCE]: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300",
         [EquipmentStatus.OUT_OF_SERVICE]: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300",
         [EquipmentStatus.FAILURE_REPORTED]: "bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300",
+        [EquipmentStatus.DONATION]: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-300",
         // New Statuses
         [EquipmentStatus.LOAN]: "bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300",
         [EquipmentStatus.RETURN]: "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300",
@@ -143,13 +144,15 @@ const InventoryListPage: React.FC = () => {
         );
 
         if (activeWorkOrder) {
+            // Only override if it's a failure or maintenance that impacts operation
             if (activeWorkOrder.type === WorkOrderType.CORRECTIVE || activeWorkOrder.status === WorkOrderStatus.REPORTED) {
                 return EquipmentStatus.FAILURE_REPORTED;
             }
-            return equipmentItem.status;
-        }
-        if (equipmentItem.status === EquipmentStatus.OUT_OF_SERVICE) {
-            return EquipmentStatus.OUT_OF_SERVICE;
+            // For other work orders (preventive, etc), we might want to show IN_MAINTENANCE vs original.
+            // But if it's specialized status like LOAN, keep it.
+            if ([EquipmentStatus.LOAN, EquipmentStatus.DONATION, EquipmentStatus.RETURN, EquipmentStatus.DIAGNOSIS, EquipmentStatus.PREVENTIVE, EquipmentStatus.CORRECTIVE, EquipmentStatus.OTHER].includes(equipmentItem.status)) {
+                return equipmentItem.status;
+            }
         }
         return equipmentItem.status;
     };
